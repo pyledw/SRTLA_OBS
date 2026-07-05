@@ -81,6 +81,9 @@ static inline int get_addr_len(const struct sockaddr *addr) {
 #define CONN_TIMEOUT   10
 
 #define RECV_ACK_INT 10
+#ifndef min
+#define min(a,b) (((a) < (b)) ? (a) : (b))
+#endif
 typedef struct srtla_conn {
   struct srtla_conn *next;
   struct sockaddr_storage addr;
@@ -568,7 +571,6 @@ void handle_srt_data(conn_group_t *g) {
 
   int n = RECV(g->srt_sock, &buf, MTU, 0);
   if (n < SRT_MIN_LEN) {
-    int e = errno;
     if (flag_log_errors) err("Group #%llu (ptr=%p): SRT read failed (err=%s). Entering WAITING_SRT\n", (unsigned long long)g->logical_group_id, g, sock_err_str());
     else err("Group %p: failed to read the SRT sock, entering WAITING_SRT\n", g);
     // Close socket and mark for retry rather than destroying the whole group

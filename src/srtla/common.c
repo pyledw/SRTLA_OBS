@@ -29,6 +29,7 @@ typedef unsigned long in_addr_t; // Define in_addr_t for Windows
 #include <endian.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <errno.h>
 #endif
 
 #include <stdlib.h>
@@ -126,7 +127,7 @@ int port_no(struct sockaddr *addr) {
 
 int parse_ip(struct sockaddr_in *addr, char *ip_str) {
   in_addr_t ip = inet_addr(ip_str);
-  if (ip == -1) return -1;
+  if (ip == INADDR_NONE) return -1;
 
   memset(addr, 0, sizeof(*addr));
   addr->sin_family = AF_INET;
