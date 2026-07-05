@@ -1,21 +1,28 @@
 # SRTLA Receiver Plugin for OBS Studio
 
-A custom, high-performance **SRTLA (SRT Link Aggregation)** Receiver plugin built directly for OBS Studio on Windows. This plugin allows OBS to act as a native receiver for bonded SRT streams sent from devices running Belabox, IRL Pro, or other SRTLA-compatible encoders.
+A custom, high-performance **SRTLA (SRT Link Aggregation)** Receiver plugin built directly for OBS Studio. This plugin allows OBS to act as a native receiver for bonded SRT streams sent from devices running Belabox, IRL Pro, or other SRTLA-compatible encoders.
 
 ---
 
-## Key Features
+## 🚀 Download & Installation (Pre-Compiled Binary)
 
-* **Multi-Instance Support**: Create multiple independent SRTLA Receiver sources in OBS, each bound to its own port and proxying to separate media sources.
-* **SRTLA Monitor UI Dock**: Real-time status widget inside OBS (**Docks -> SRTLA Status**) to monitor active connections, bandwidth, packet counts, and connection health per source.
-* **Interface Binding (Multi-NIC Support)**: Solves asymmetric routing on multi-homed/multi-NIC Windows systems using the Windows IP Helper API (`IP_UNICAST_IF`), forcing replies back through the correct gateway to maintain stable cellular connection NAT mappings.
-* **Server-Side Session Recovery**: Instantly recovers connection groups when receiving orphaned handshakes, preventing encoders from getting stuck in infinite loop reconnections after an OBS restart.
-* **WSAECONNRESET Hardening**: Robust Windows socket error handling to prevent ICMP Port Unreachable packets from breaking the UDP receiving loops.
-* **Verbose Diagnostic Logging**: Embedded logs showing incoming handshakes (`REG1`/`REG2`) and outgoing responses (`REG3`) to make router firewall debugging extremely simple.
+You can download the pre-compiled version of the plugin directly from this repository:
+
+1. **Download the Zip Package**:
+   * Navigate to the **[Install](/Install)** directory in this repository.
+   * Download the **[SRTLA_Receiver_Windows.zip](/Install/SRTLA_Receiver_Windows.zip)** archive.
+2. **Install the Plugin**:
+   * Close OBS Studio.
+   * Extract the contents of the zip file directly into your OBS Studio installation folder:
+     * Default path: `C:\Program Files\obs-studio\`
+     * (This automatically copies `SRTLA_Receiver.dll` into `C:\Program Files\obs-studio\obs-plugins\64bit\`).
+3. **Launch OBS** and add a new **SRTLA Receiver** source to your scene!
+
+*Note for Windows users:* If you receive a SmartScreen warning or an error when loading, right-click the `SRTLA_Receiver.dll` file, select **Properties**, and check **Unblock** if it was blocked by Windows as a downloaded file.
 
 ---
 
-## How to Configure OBS Source Properties
+## ⚙️ How to Configure OBS Source Settings
 
 When you add a **SRTLA Receiver** source to your scene, you will have three main settings:
 
@@ -30,7 +37,7 @@ When you add a **SRTLA Receiver** source to your scene, you will have three main
 
 ---
 
-## Network & Port Forwarding Requirements
+## 🔌 Network & Port Forwarding Requirements
 
 To ensure external connections from cellular networks function properly, configure the following:
 
@@ -40,7 +47,7 @@ To ensure external connections from cellular networks function properly, configu
 
 ---
 
-## Reopening the Monitor Dock
+## 📊 Reopening the Monitor Dock
 
 If you close the **SRTLA Status** tree widget, you can reopen it at any time from the top menu of OBS:
 1. Go to **Docks** in the top menu.
@@ -48,60 +55,28 @@ If you close the **SRTLA Status** tree widget, you can reopen it at any time fro
 
 ---
 
-## How to Build the Plugin
+## 📦 How to Build All Platform Installers (Windows, macOS, Linux)
 
-This plugin has been de-submoduled and is packaged as a flat repository. No external Git submodule management is needed.
+If you need installer packages (`.exe`/`.zip` for Windows, `.pkg` for macOS, `.deb` for Linux) that automatically install the files into the correct path of OBS:
 
-### Prerequisites
-* **CMake 3.30+**
-* **Visual Studio 2022** (with C++ Desktop development workload)
+### Method A: Build Automatically via GitHub (Recommended)
+This repository includes a pre-configured GitHub Actions build workflow. **Autobuilding is disabled on general code pushes** to keep your git push clean. It will only run when you explicitly request it:
 
-### Build Steps
-Run the following commands in the project root:
+1. **Build Manually (Workflow Dispatch)**:
+   * Go to your repository on GitHub.
+   * Click the **Actions** tab.
+   * Select **Push** or **dispatch** workflow on the left.
+   * Click **Run workflow** -> Select your branch -> Click the green **Run workflow** button.
+   * GitHub will automatically compile the code for Windows, macOS, and Linux in parallel and attach the pre-compiled `.zip`, `.exe`, `.pkg`, and `.deb` installers directly to the completed run for you to download!
+2. **Build on Release Tag**:
+   * Pushing a tag (e.g. `v1.0.0`) automatically compiles all platform installers and attaches them directly to a **Draft Release** in your repository.
 
-```powershell
-# 1. Configure the build
-cmake -B build_x64 -S .
-
-# 2. Compile in Release mode
-cmake --build build_x64 --config Release
-```
-
-The compiled binaries will be generated at:
-`build_x64/Release/SRTLA_Receiver.dll`
-
----
-
-## Installation & Release Packaging
-
-When publishing releases on GitHub, it is recommended to compile the binaries and package them into simple Archive files (.zip or .tar.gz) that match OBS Studio's plugin directory structure. 
-
-### Package Structure
-Create a release archive with the following directory structure:
-```text
-obs-plugins/
-  64bit/
-    SRTLA_Receiver.dll   # The compiled plugin library
-```
-
-### Installation Paths by Operating System
-
-Users can install the plugin by downloading the package for their operating system and copying the contents into the appropriate OBS Studio directory:
-
-#### Windows
-Copy the `obs-plugins` folder into your OBS Studio installation directory:
-* Default path: `C:\Program Files\obs-studio\`
-* (So the DLL ends up in `C:\Program Files\obs-studio\obs-plugins\64bit\SRTLA_Receiver.dll`)
-
-*Note for Windows users:* If you receive a SmartScreen warning or an error when loading, ensure you right-click the `SRTLA_Receiver.dll` file, select **Properties**, and check **Unblock** if it was blocked by Windows as a downloaded file.
-
-#### macOS
-Copy the compiled `.so` or `.dylib` library into the OBS plugins directory:
-* System-wide: `/Library/Application Support/obs-studio/plugins/SRTLA_Receiver/bin/`
-* User-specific: `~/Library/Application Support/obs-studio/plugins/SRTLA_Receiver/bin/`
-
-#### Linux (Ubuntu/Debian)
-Copy the library file into the OBS plugins folder:
-* User-specific: `~/.config/obs-studio/plugins/SRTLA_Receiver/bin/`
-* System-wide: `/usr/lib/obs-plugins/` or `/usr/share/obs/obs-plugins/`
-
+### Method B: Build Locally (Windows Only)
+To compile the dll on your local Windows machine:
+1. Ensure you have **CMake 3.30+** and **Visual Studio 2022** installed.
+2. Open terminal in the project root and run:
+   ```powershell
+   cmake -B build_x64 -S .
+   cmake --build build_x64 --config Release
+   ```
+   The compiled library will output to `build_x64/Release/SRTLA_Receiver.dll`.
