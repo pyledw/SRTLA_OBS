@@ -75,22 +75,36 @@ static void handle_api_obs_ws_config(const httplib::Request &, httplib::Response
 #include <QDir>
 #include <QTemporaryFile>
 #include <QTextStream>
+#include <QCoreApplication>
 
 static void handle_api_restart(const httplib::Request &, httplib::Response &res) {
     res.set_content("{\"status\":\"restarting\"}", "application/json");
     QMetaObject::invokeMethod(qApp, []() {
         QString path = QDir::toNativeSeparators(qApp->applicationFilePath());
         QString workDir = QDir::toNativeSeparators(qApp->applicationDirPath());
+        qint64 pid = QCoreApplication::applicationPid();
         
         QString batPath = QDir::toNativeSeparators(QDir::tempPath() + QDir::separator() + "obs_pyleirl_restart.bat");
         QFile file(batPath);
         if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream out(&file);
             out << "@echo off\n";
-            out << "timeout /t 2 >nul\n";
+            out << "set PID=" << pid << "\n";
+            out << "set count=0\n";
+            out << ":loop\n";
+            out << "tasklist /FI \"PID eq %PID%\" 2>NUL | find \"%PID%\" >NUL\n";
+            out << "if errorlevel 1 goto launch\n";
+            out << "timeout /t 1 >nul\n";
+            out << "set /a count+=1\n";
+            out << "if %count% GTR 10 (\n";
+            out << "    taskkill /PID %PID% /F >nul\n";
+            out << "    goto launch\n";
+            out << ")\n";
+            out << "goto loop\n";
+            out << ":launch\n";
             out << "cd /d \"" << workDir << "\"\n";
             out << "start \"\" \"" << path << "\"\n";
-            out << "del \"%~f0\"\n"; // self delete
+            out << "del \"%~f0\"\n";
             file.close();
             
             QProcess::startDetached("cmd.exe", QStringList() << "/c" << batPath);
