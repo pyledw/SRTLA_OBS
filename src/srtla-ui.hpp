@@ -36,7 +36,7 @@ private slots:
 
 #include <QDialog>
 #include <QLineEdit>
-#include <QCheckBox>
+#include <QComboBox>
 #include <QSpinBox>
 
 class SrtlaReverseProxyDialog : public QDialog {
@@ -55,7 +55,7 @@ private:
 	QLineEdit *authToken;
 	QLineEdit *forwardPorts;
 };
-#include <QComboBox>
+
 #include <QTableWidget>
 #include <QVector>
 
