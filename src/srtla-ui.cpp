@@ -349,7 +349,7 @@ SrtlaReverseProxyDialog::SrtlaReverseProxyDialog(QWidget *parent) : QDialog(pare
 	forwardPorts->setPlaceholderText("e.g. 5000-5010");
 	forwardPorts->setToolTip("Comma separated list of ports or ranges to forward from the proxy to this machine.");
 
-	formLayout->addRow("", enableProxy);
+	formLayout->addRow(enableProxy);
 	formLayout->addRow("Server Address:", serverAddress);
 	formLayout->addRow("Server Port:", serverPort);
 	formLayout->addRow("Auth Token:", authToken);
@@ -513,6 +513,8 @@ extern "C" void srtla_proxy_settings_changed()
 #include <QTimer>
 #include <QMap>
 #include <QTabWidget>
+#include <QSet>
+
 
 SrtlaAutoSwitchDialog::SrtlaAutoSwitchDialog(QWidget *parent) : QDialog(parent)
 {
@@ -560,7 +562,7 @@ SrtlaAutoSwitchDialog::SrtlaAutoSwitchDialog(QWidget *parent) : QDialog(parent)
 		&availableSources);
 	availableSources.sort();
 
-	sceneLayout->addRow("", enableAutoSwitch);
+	sceneLayout->addRow(enableAutoSwitch);
 	sceneLayout->addRow("Switch Delay:", switchDelay);
 
 	rulesTable = new QTableWidget();
@@ -589,16 +591,16 @@ SrtlaAutoSwitchDialog::SrtlaAutoSwitchDialog(QWidget *parent) : QDialog(parent)
 	visSwitchDelay->setValue(2); // Default 2 seconds
 
 	visibilityRulesTable = new QTableWidget();
-	visibilityRulesTable->setColumnCount(5);
+	visibilityRulesTable->setColumnCount(4);
 	visibilityRulesTable->setHorizontalHeaderLabels(QStringList() << "Min Kbps" << "Max Kbps (0=unlimited)"
-								      << "Source Name" << "Action" << "");
+								      << "Source Name" << "");
 	visibilityRulesTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-	visibilityRulesTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
+	visibilityRulesTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
 
 	QPushButton *addVisRuleBtn = new QPushButton("Add Visibility Rule");
 	connect(addVisRuleBtn, &QPushButton::clicked, this, &SrtlaAutoSwitchDialog::addNewVisibilityRule);
 
-	visLayout->addRow("", enableVisSwitch);
+	visLayout->addRow(enableVisSwitch);
 	visLayout->addRow("Switch Delay:", visSwitchDelay);
 	visLayout->addRow(visibilityRulesTable);
 	visLayout->addRow(addVisRuleBtn);
@@ -650,7 +652,7 @@ SrtlaAutoSwitchDialog::SrtlaAutoSwitchDialog(QWidget *parent) : QDialog(parent)
 				for (int i = 0; i < arr.size(); i++) {
 					QJsonObject obj = arr[i].toObject();
 					addVisibilityRuleRow(obj["minKbps"].toInt(), obj["maxKbps"].toInt(),
-							     obj["sourceName"].toString(), obj["action"].toString());
+							     obj["sourceName"].toString());
 				}
 			}
 		}
@@ -673,7 +675,6 @@ void SrtlaAutoSwitchDialog::addRuleRow(int minKbps, int maxKbps, const QString &
 	rulesTable->setCellWidget(row, 1, maxSp);
 
 	QComboBox *sceneCb = new QComboBox();
-	sceneCb->addItem("[Return to Original Screen]");
 	sceneCb->addItems(availableScenes);
 	int index = sceneCb->findText(targetScene);
 	if (index >= 0)
@@ -694,11 +695,10 @@ void SrtlaAutoSwitchDialog::addRuleRow(int minKbps, int maxKbps, const QString &
 
 void SrtlaAutoSwitchDialog::addNewRule()
 {
-	addRuleRow(0, 0, "[Return to Original Screen]");
+	addRuleRow(0, 0, availableScenes.isEmpty() ? "" : availableScenes[0]);
 }
 
-void SrtlaAutoSwitchDialog::addVisibilityRuleRow(int minKbps, int maxKbps, const QString &sourceName,
-						 const QString &action)
+void SrtlaAutoSwitchDialog::addVisibilityRuleRow(int minKbps, int maxKbps, const QString &sourceName)
 {
 	int row = visibilityRulesTable->rowCount();
 	visibilityRulesTable->insertRow(row);
@@ -723,27 +723,21 @@ void SrtlaAutoSwitchDialog::addVisibilityRuleRow(int minKbps, int maxKbps, const
 		sourceCb->setCurrentText(sourceName);
 	visibilityRulesTable->setCellWidget(row, 2, sourceCb);
 
-	QComboBox *actionCb = new QComboBox();
-	actionCb->addItem("Show");
-	actionCb->addItem("Hide");
-	actionCb->setCurrentText(action);
-	visibilityRulesTable->setCellWidget(row, 3, actionCb);
-
 	QPushButton *removeBtn = new QPushButton("Remove");
 	connect(removeBtn, &QPushButton::clicked, [this, removeBtn]() {
 		for (int i = 0; i < visibilityRulesTable->rowCount(); i++) {
-			if (visibilityRulesTable->cellWidget(i, 4) == removeBtn) {
+			if (visibilityRulesTable->cellWidget(i, 3) == removeBtn) {
 				visibilityRulesTable->removeRow(i);
 				break;
 			}
 		}
 	});
-	visibilityRulesTable->setCellWidget(row, 4, removeBtn);
+	visibilityRulesTable->setCellWidget(row, 3, removeBtn);
 }
 
 void SrtlaAutoSwitchDialog::addNewVisibilityRule()
 {
-	addVisibilityRuleRow(0, 0, "", "Show");
+	addVisibilityRuleRow(0, 0, "");
 }
 
 void SrtlaAutoSwitchDialog::saveSettings()
@@ -780,14 +774,12 @@ void SrtlaAutoSwitchDialog::saveSettings()
 			QSpinBox *minSp = qobject_cast<QSpinBox *>(visibilityRulesTable->cellWidget(i, 0));
 			QSpinBox *maxSp = qobject_cast<QSpinBox *>(visibilityRulesTable->cellWidget(i, 1));
 			QComboBox *sourceCb = qobject_cast<QComboBox *>(visibilityRulesTable->cellWidget(i, 2));
-			QComboBox *actionCb = qobject_cast<QComboBox *>(visibilityRulesTable->cellWidget(i, 3));
 
-			if (minSp && maxSp && sourceCb && actionCb) {
+			if (minSp && maxSp && sourceCb) {
 				QJsonObject obj;
 				obj["minKbps"] = minSp->value();
 				obj["maxKbps"] = maxSp->value();
 				obj["sourceName"] = sourceCb->currentText();
-				obj["action"] = actionCb->currentText();
 				visArr.append(obj);
 			}
 		}
@@ -837,8 +829,7 @@ void SrtlaAutoSwitcher::handleFrontendEvent(enum obs_frontend_event event, void 
 			obs_source_t *currentScene = obs_frontend_get_current_scene();
 			const char *currentName = currentScene ? obs_source_get_name(currentScene) : nullptr;
 
-			if (currentName && rule.targetScene != "[Return to Original Screen]" &&
-			    QString::fromUtf8(currentName) != rule.targetScene) {
+			if (currentName && QString::fromUtf8(currentName) != rule.targetScene) {
 				// User manually navigated away from the auto-switched scene.
 				// Reset state so we are back in "manual" mode.
 				switcher->originalSceneName = "";
@@ -884,7 +875,6 @@ void SrtlaAutoSwitcher::loadRules()
 					r.minKbps = obj["minKbps"].toInt();
 					r.maxKbps = obj["maxKbps"].toInt();
 					r.sourceName = obj["sourceName"].toString();
-					r.action = obj["action"].toString();
 					visibilityRules.append(r);
 				}
 			}
@@ -981,7 +971,7 @@ void SrtlaAutoSwitcher::checkBitrate()
 		}
 
 		if (matchedRule != currentMatchedRuleIndex) {
-			// Bitrate changed to a different rule range
+			// Bitrate changed to a different rule range (or outside all ranges)
 			currentMatchedRuleIndex = matchedRule;
 			matchDurationCounter = 0;
 		}
@@ -992,25 +982,21 @@ void SrtlaAutoSwitcher::checkBitrate()
 				// Apply rule
 				const AutoSwitchRule &rule = rules[currentMatchedRuleIndex];
 
-				if (rule.targetScene == "[Return to Original Screen]") {
-					if (!originalSceneName.isEmpty()) {
-						obs_source_t *prevSceneSrc =
-							obs_get_source_by_name(originalSceneName.toUtf8().constData());
-						if (prevSceneSrc) {
-							obs_frontend_set_current_scene(prevSceneSrc);
-							obs_source_release(prevSceneSrc);
-						}
-					}
-					originalSceneName = ""; // Clear manual override state
-					currentlyAppliedRuleIndex = currentMatchedRuleIndex;
-				} else {
-					obs_source_t *currentScene = obs_frontend_get_current_scene();
-					if (currentScene) {
-						const char *currentName = obs_source_get_name(currentScene);
-						if (currentName && QString::fromUtf8(currentName) != rule.targetScene) {
-							if (originalSceneName.isEmpty()) {
-								// Only save the original scene if we weren't already auto-switched
-								originalSceneName = QString::fromUtf8(currentName);
+				// Build target scenes set to check if current scene is a primary scene
+				QSet<QString> targetScenes;
+				for (const auto &r : rules) {
+					targetScenes.insert(r.targetScene);
+				}
+
+				obs_source_t *currentScene = obs_frontend_get_current_scene();
+				if (currentScene) {
+					const char *currentName = obs_source_get_name(currentScene);
+					if (currentName) {
+						QString currentNameStr = QString::fromUtf8(currentName);
+						if (currentNameStr != rule.targetScene) {
+							if (!targetScenes.contains(currentNameStr) && originalSceneName.isEmpty()) {
+								// Only save the original scene if it's a primary scene (not in targetScenes)
+								originalSceneName = currentNameStr;
 							}
 
 							obs_source_t *targetSceneSrc = obs_get_source_by_name(
@@ -1020,14 +1006,28 @@ void SrtlaAutoSwitcher::checkBitrate()
 								obs_source_release(targetSceneSrc);
 								currentlyAppliedRuleIndex = currentMatchedRuleIndex;
 							}
-						} else if (currentName &&
-							   QString::fromUtf8(currentName) == rule.targetScene) {
+						} else {
 							// Already on the target scene, just update index
 							currentlyAppliedRuleIndex = currentMatchedRuleIndex;
 						}
-						obs_source_release(currentScene);
 					}
+					obs_source_release(currentScene);
 				}
+			}
+		} else {
+			// No rules match (bitrate is outside of all configured low-bitrate ranges, i.e., recovered)
+			matchDurationCounter++;
+			if (matchDurationCounter >= delay && currentlyAppliedRuleIndex != -1) {
+				if (!originalSceneName.isEmpty()) {
+					obs_source_t *prevSceneSrc =
+						obs_get_source_by_name(originalSceneName.toUtf8().constData());
+					if (prevSceneSrc) {
+						obs_frontend_set_current_scene(prevSceneSrc);
+						obs_source_release(prevSceneSrc);
+					}
+					originalSceneName = "";
+				}
+				currentlyAppliedRuleIndex = -1;
 			}
 		}
 	}
@@ -1048,26 +1048,36 @@ void SrtlaAutoSwitcher::checkBitrate()
 			visMatchDurationCounter = 0;
 		}
 
-		if (currentMatchedVisRuleIndex >= 0) {
-			visMatchDurationCounter++;
-			if (visMatchDurationCounter >= visDelay &&
-			    currentMatchedVisRuleIndex != currentlyAppliedVisRuleIndex) {
-				const SourceVisibilityRule &rule = visibilityRules[currentMatchedVisRuleIndex];
+		visMatchDurationCounter++;
+		if (visMatchDurationCounter >= visDelay &&
+		    currentMatchedVisRuleIndex != currentlyAppliedVisRuleIndex) {
+			// Find all unique source names in rules to hide them by default
+			QSet<QString> allRuleSources;
+			for (const auto &r : visibilityRules) {
+				allRuleSources.insert(r.sourceName);
+			}
 
-				obs_source_t *currentSceneSource = obs_frontend_get_current_scene();
-				if (currentSceneSource) {
-					obs_scene_t *scene = obs_scene_from_source(currentSceneSource);
-					if (scene) {
+			QString sourceToShow = "";
+			if (currentMatchedVisRuleIndex >= 0) {
+				sourceToShow = visibilityRules[currentMatchedVisRuleIndex].sourceName;
+			}
+
+			obs_source_t *currentSceneSource = obs_frontend_get_current_scene();
+			if (currentSceneSource) {
+				obs_scene_t *scene = obs_scene_from_source(currentSceneSource);
+				if (scene) {
+					for (const auto &sourceName : allRuleSources) {
 						obs_sceneitem_t *item = obs_scene_find_source_recursive(
-							scene, rule.sourceName.toUtf8().constData());
+							scene, sourceName.toUtf8().constData());
 						if (item) {
-							obs_sceneitem_set_visible(item, (rule.action == "Show"));
+							bool shouldShow = (sourceName == sourceToShow);
+							obs_sceneitem_set_visible(item, shouldShow);
 						}
 					}
-					obs_source_release(currentSceneSource);
 				}
-				currentlyAppliedVisRuleIndex = currentMatchedVisRuleIndex;
+				obs_source_release(currentSceneSource);
 			}
+			currentlyAppliedVisRuleIndex = currentMatchedVisRuleIndex;
 		}
 	}
 }
@@ -1171,7 +1181,7 @@ SrtlaWebInterfaceDialog::SrtlaWebInterfaceDialog(QWidget *parent) : QDialog(pare
 	webPort->setRange(1, 65535);
 	webPort->setValue(8080); // Default port
 
-	formLayout->addRow("", enableWeb);
+	formLayout->addRow(enableWeb);
 	formLayout->addRow("Web Server Port:", webPort);
 
 	mainLayout->addLayout(formLayout);

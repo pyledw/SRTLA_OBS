@@ -69,7 +69,6 @@ struct SourceVisibilityRule {
 	int minKbps;
 	int maxKbps; // 0 means unlimited
 	QString sourceName;
-	QString action; // "Show" or "Hide"
 };
 
 class SrtlaAutoSwitchDialog : public QDialog {
@@ -96,7 +95,7 @@ private:
 	QStringList availableSources;
 
 	void addRuleRow(int minKbps, int maxKbps, const QString &targetScene);
-	void addVisibilityRuleRow(int minKbps, int maxKbps, const QString &sourceName, const QString &action);
+	void addVisibilityRuleRow(int minKbps, int maxKbps, const QString &sourceName);
 };
 
 class SrtlaAutoSwitcher : public QObject {

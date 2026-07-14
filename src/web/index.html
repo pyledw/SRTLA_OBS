@@ -493,7 +493,7 @@
             rules.forEach(r => addAutoSwitchRule(r.minKbps, r.maxKbps, r.targetScene));
         }
 
-        function addAutoSwitchRule(min=0, max=0, scene="[Return to Original Screen]") {
+        function addAutoSwitchRule(min=0, max=0, scene="") {
             const table = document.getElementById('rules-table');
             const row = table.insertRow();
             row.innerHTML = `
