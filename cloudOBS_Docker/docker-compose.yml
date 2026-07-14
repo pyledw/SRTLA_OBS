@@ -111,7 +111,7 @@ services:
         chmod +x /usr/local/bin/install-obs.sh
 
         # Create an XFCE autostart entry so the terminal automatically pops up on boot
-        mkdir -p /config/.config/autostart
+        mkdir -p /config/.config/autostart /config/Desktop
         cat << 'EOF' > /config/.config/autostart/obs-installer.desktop
         [Desktop Entry]
         Type=Application
@@ -120,6 +120,17 @@ services:
         Name=OBS Installer
         X-GNOME-Autostart-enabled=true
         EOF
+
+        # Create a Desktop shortcut for manual rebuilds
+        cat << 'EOF' > /config/Desktop/rebuild-plugin.desktop
+        [Desktop Entry]
+        Type=Application
+        Exec=xfce4-terminal --command="bash -c '/usr/local/bin/install-obs.sh; exec bash'"
+        Icon=utilities-terminal
+        Name=Rebuild PyleIRL Plugin
+        Terminal=false
+        EOF
+        chmod +x /config/Desktop/rebuild-plugin.desktop
 
         # CRITICAL FIX: The previous script ran 'chown abc:abc' before 'abc' existed, 
         # leaving /config owned by root and completely crashing XFCE! 
