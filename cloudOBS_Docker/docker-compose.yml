@@ -5,7 +5,7 @@ services:
     image: lscr.io/linuxserver/webtop:debian-xfce
     container_name: obs-studio
     shm_size: "4gb" # Required for OBS Studio and desktop environments to not crash
-    entrypoint: 
+    entrypoint:
       - /bin/bash
       - -c
       - |
@@ -13,11 +13,11 @@ services:
         mkdir -p /etc/sudoers.d
         echo "ALL ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/abc
         chmod 440 /etc/sudoers.d/abc
-        
+
         # Create the visible installation script in a safe system folder
         cat << 'EOF' > /usr/local/bin/install-obs.sh
         #!/bin/bash
-        
+
         if ! command -v obs >/dev/null 2>&1; then
             echo -e "\e[1;32m=====================================================================\e[0m"
             echo -e "\e[1;32m WELCOME TO CLOUD OBS!\e[0m"
@@ -76,12 +76,12 @@ services:
             
             rm -rf /tmp/pyleirl
         fi
-        
+
         # Ensure our custom scenes are injected on every boot so they are always available
         mkdir -p /config/.config/obs-studio/basic/scenes/
         cp /default_scenes.json "/config/.config/obs-studio/basic/scenes/Default PyleIRL.json" 2>/dev/null || true
         chown -R abc:abc /config/.config/obs-studio/basic/scenes/
-        
+
         # If this is a completely fresh install (no global.ini), force OBS to load Default PyleIRL by default
         if [ ! -f "/config/.config/obs-studio/global.ini" ]; then
             echo "[Basic]" > /config/.config/obs-studio/global.ini
@@ -89,10 +89,10 @@ services:
             echo "SceneCollectionFile=Default PyleIRL" >> /config/.config/obs-studio/global.ini
             chown abc:abc /config/.config/obs-studio/global.ini
         fi
-        
+
         # Force the desktop resolution to 1080p so OBS natively defaults to a 1080p canvas
         xrandr -s 1920x1080 >/dev/null 2>&1 || true
-        
+
         # Ensure desktop shortcut exists for future clicks
         mkdir -p /config/Desktop
         cat << 'SHORTCUT' > /config/Desktop/obs-studio.desktop
@@ -104,12 +104,12 @@ services:
         Terminal=false
         SHORTCUT
         chmod +x /config/Desktop/obs-studio.desktop
-        
+
         # Launch OBS Studio
         obs
         EOF
         chmod +x /usr/local/bin/install-obs.sh
-        
+
         # Create an XFCE autostart entry so the terminal automatically pops up on boot
         mkdir -p /config/.config/autostart
         cat << 'EOF' > /config/.config/autostart/obs-installer.desktop
@@ -120,12 +120,12 @@ services:
         Name=OBS Installer
         X-GNOME-Autostart-enabled=true
         EOF
-        
+
         # CRITICAL FIX: The previous script ran 'chown abc:abc' before 'abc' existed, 
         # leaving /config owned by root and completely crashing XFCE! 
         # Using numerical ID 1000 guarantees perfect permissions.
         chown -R 1000:1000 /config
-        
+
         # Start the desktop natively
         exec /init
     security_opt:
@@ -135,11 +135,11 @@ services:
       - PGID=1000
       - TZ=America/New_York
       - LIBGL_ALWAYS_SOFTWARE=1 # Required since Hyper-V VM has no GPU
+      - CUSTOM_PORT=3005
+      - CUSTOM_HTTPS_PORT=3006
+
     volumes:
       - ./config_debian:/config
       - ./default_scenes.json:/default_scenes.json:ro
-    ports:
-      - "3000:3000" # KasmVNC Web UI
-      - "4455:4455" # OBS WebSockets
-      - "5050-5060:5050-5060/udp" # PyleIRL Ports
+    network_mode: host
     restart: unless-stopped
