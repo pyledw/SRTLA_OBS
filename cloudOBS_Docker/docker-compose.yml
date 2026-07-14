@@ -32,6 +32,10 @@ services:
         fi
             
         echo -e "\n\e[1;34m--> Downloading Prebuilt PyleIRL Plugin...\e[0m"
+        
+        # Kill OBS before unpacking so the .so file isn't locked by the OS!
+        killall -9 obs 2>/dev/null || true
+        
         mkdir -p /tmp/pyleirl
         
         # Fetch the download URL of the latest release bypassing API rate limits
@@ -56,7 +60,7 @@ services:
             mkdir -p /config/.config/obs-studio/plugins/PyleIRL/bin/64bit
             mkdir -p /config/.config/obs-studio/plugins/PyleIRL/data
             
-            find /tmp/pyleirl -name "*.so" -exec cp {} /config/.config/obs-studio/plugins/PyleIRL/bin/64bit/ \;
+            find /tmp/pyleirl -name "*.so" -exec cp -f {} /config/.config/obs-studio/plugins/PyleIRL/bin/64bit/ \;
             
             # Copy translation/data files if they exist in the extracted folder
             if [ -d "/tmp/pyleirl/share/obs/obs-plugins/PyleIRL" ]; then
