@@ -345,7 +345,9 @@ SrtlaReverseProxyDialog::SrtlaReverseProxyDialog(QWidget *parent) : QDialog(pare
 	addLogoToLayout(mainLayout);
 	QFormLayout *formLayout = new QFormLayout();
 
-	enableProxy = new QCheckBox();
+	enableProxy = new QComboBox();
+	enableProxy->addItem("Disabled");
+	enableProxy->addItem("Enabled");
 
 	serverAddress = new QLineEdit();
 	serverAddress->setPlaceholderText("e.g. proxy.mydomain.com or IP");
@@ -379,7 +381,7 @@ SrtlaReverseProxyDialog::SrtlaReverseProxyDialog(QWidget *parent) : QDialog(pare
 	// Load existing settings
 	config_t *global_config = obs_frontend_get_profile_config();
 	if (global_config) {
-		enableProxy->setChecked(config_get_bool(global_config, "SRTLA_Proxy", "Enabled"));
+		enableProxy->setCurrentIndex(config_get_bool(global_config, "SRTLA_Proxy", "Enabled") ? 1 : 0);
 		const char *addr = config_get_string(global_config, "SRTLA_Proxy", "ServerAddress");
 		if (addr && *addr)
 			serverAddress->setText(addr);
@@ -404,7 +406,7 @@ void SrtlaReverseProxyDialog::saveSettings()
 {
 	config_t *global_config = obs_frontend_get_profile_config();
 	if (global_config) {
-		config_set_bool(global_config, "SRTLA_Proxy", "Enabled", enableProxy->isChecked());
+		config_set_bool(global_config, "SRTLA_Proxy", "Enabled", enableProxy->currentIndex() == 1);
 		config_set_string(global_config, "SRTLA_Proxy", "ServerAddress",
 				  serverAddress->text().toUtf8().constData());
 		config_set_int(global_config, "SRTLA_Proxy", "ServerPort", serverPort->value());
@@ -541,7 +543,9 @@ SrtlaAutoSwitchDialog::SrtlaAutoSwitchDialog(QWidget *parent) : QDialog(parent)
 	QWidget *sceneTab = new QWidget();
 	QFormLayout *sceneLayout = new QFormLayout(sceneTab);
 
-	enableAutoSwitch = new QCheckBox();
+	enableAutoSwitch = new QComboBox();
+	enableAutoSwitch->addItem("Disabled");
+	enableAutoSwitch->addItem("Enabled");
 
 	switchDelay = new QSpinBox();
 	switchDelay->setRange(0, 60);
@@ -596,7 +600,9 @@ SrtlaAutoSwitchDialog::SrtlaAutoSwitchDialog(QWidget *parent) : QDialog(parent)
 	QWidget *visTab = new QWidget();
 	QFormLayout *visLayout = new QFormLayout(visTab);
 
-	enableVisSwitch = new QCheckBox();
+	enableVisSwitch = new QComboBox();
+	enableVisSwitch->addItem("Disabled");
+	enableVisSwitch->addItem("Enabled");
 
 	visSwitchDelay = new QSpinBox();
 	visSwitchDelay->setRange(0, 60);
@@ -631,8 +637,10 @@ SrtlaAutoSwitchDialog::SrtlaAutoSwitchDialog(QWidget *parent) : QDialog(parent)
 	// Load existing settings
 	config_t *global_config = obs_frontend_get_profile_config();
 	if (global_config) {
-		enableAutoSwitch->setChecked(config_get_bool(global_config, "SRTLA_AutoSwitch", "Enabled"));
-		enableVisSwitch->setChecked(config_get_bool(global_config, "SRTLA_AutoSwitch", "VisEnabled"));
+		enableAutoSwitch->setCurrentIndex(config_get_bool(global_config, "SRTLA_AutoSwitch", "Enabled") ? 1
+														: 0);
+		enableVisSwitch->setCurrentIndex(config_get_bool(global_config, "SRTLA_AutoSwitch", "VisEnabled") ? 1
+														  : 0);
 
 		int delay = config_get_int(global_config, "SRTLA_AutoSwitch", "Delay");
 		if (config_has_user_value(global_config, "SRTLA_AutoSwitch", "Delay")) {
@@ -757,10 +765,10 @@ void SrtlaAutoSwitchDialog::saveSettings()
 {
 	config_t *global_config = obs_frontend_get_profile_config();
 	if (global_config) {
-		config_set_bool(global_config, "SRTLA_AutoSwitch", "Enabled", enableAutoSwitch->isChecked());
+		config_set_bool(global_config, "SRTLA_AutoSwitch", "Enabled", enableAutoSwitch->currentIndex() == 1);
 		config_set_int(global_config, "SRTLA_AutoSwitch", "Delay", switchDelay->value());
 
-		config_set_bool(global_config, "SRTLA_AutoSwitch", "VisEnabled", enableVisSwitch->isChecked());
+		config_set_bool(global_config, "SRTLA_AutoSwitch", "VisEnabled", enableVisSwitch->currentIndex() == 1);
 		config_set_int(global_config, "SRTLA_AutoSwitch", "VisDelay", visSwitchDelay->value());
 
 		QJsonArray arr;
@@ -1206,7 +1214,9 @@ SrtlaWebInterfaceDialog::SrtlaWebInterfaceDialog(QWidget *parent) : QDialog(pare
 	addLogoToLayout(mainLayout);
 	QFormLayout *formLayout = new QFormLayout();
 
-	enableWeb = new QCheckBox();
+	enableWeb = new QComboBox();
+	enableWeb->addItem("Disabled");
+	enableWeb->addItem("Enabled");
 
 	webPort = new QSpinBox();
 	webPort->setRange(1, 65535);
@@ -1226,7 +1236,7 @@ SrtlaWebInterfaceDialog::SrtlaWebInterfaceDialog(QWidget *parent) : QDialog(pare
 	// Load existing settings
 	config_t *global_config = obs_frontend_get_profile_config();
 	if (global_config) {
-		enableWeb->setChecked(config_get_bool(global_config, "SRTLA_WebInterface", "Enabled"));
+		enableWeb->setCurrentIndex(config_get_bool(global_config, "SRTLA_WebInterface", "Enabled") ? 1 : 0);
 		int port = config_get_int(global_config, "SRTLA_WebInterface", "Port");
 		if (port > 0)
 			webPort->setValue(port);
@@ -1240,7 +1250,7 @@ void SrtlaWebInterfaceDialog::saveSettings()
 		bool previouslyEnabled = config_get_bool(global_config, "SRTLA_WebInterface", "Enabled");
 		int previousPort = config_get_int(global_config, "SRTLA_WebInterface", "Port");
 
-		bool currentlyEnabled = enableWeb->isChecked();
+		bool currentlyEnabled = (enableWeb->currentIndex() == 1);
 		int currentPort = webPort->value();
 
 		config_set_bool(global_config, "SRTLA_WebInterface", "Enabled", currentlyEnabled);

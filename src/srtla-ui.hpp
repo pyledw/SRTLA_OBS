@@ -49,7 +49,7 @@ private slots:
 	void saveSettings();
 
 private:
-	QCheckBox *enableProxy;
+	QComboBox *enableProxy;
 	QLineEdit *serverAddress;
 	QSpinBox *serverPort;
 	QLineEdit *authToken;
@@ -83,11 +83,11 @@ private slots:
 	void addNewVisibilityRule();
 
 private:
-	QCheckBox *enableAutoSwitch;
+	QComboBox *enableAutoSwitch;
 	QSpinBox *switchDelay;
 	QTableWidget *rulesTable;
 
-	QCheckBox *enableVisSwitch;
+	QComboBox *enableVisSwitch;
 	QSpinBox *visSwitchDelay;
 	QTableWidget *visibilityRulesTable;
 
@@ -149,6 +149,6 @@ private slots:
 	void saveSettings();
 
 private:
-	QCheckBox *enableWeb;
+	QComboBox *enableWeb;
 	QSpinBox *webPort;
 };
