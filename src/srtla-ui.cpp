@@ -1293,7 +1293,7 @@ extern "C" void setup_srtla_menu()
 		bool webEnabled = config_get_bool(global_config, "SRTLA_WebInterface", "Enabled");
 		int webPort = config_get_int(global_config, "SRTLA_WebInterface", "Port");
 		if (webPort == 0)
-			webPort = 8080; // default
+			webPort = 5433; // default
 		if (webEnabled) {
 			srtla_web_server_start(webPort);
 		}
@@ -1340,7 +1340,7 @@ SrtlaWebInterfaceDialog::SrtlaWebInterfaceDialog(QWidget *parent) : QDialog(pare
 
 	webPort = new QSpinBox();
 	webPort->setRange(1, 65535);
-	webPort->setValue(8080); // Default port
+	webPort->setValue(5433); // Default port
 
 	accessPassword = new QLineEdit();
 	accessPassword->setPlaceholderText("Leave blank to disable");
