@@ -103,18 +103,56 @@ services:
         
         rm -rf /tmp/pyleirl
 
-        # Ensure our custom scenes are injected on every boot so they are always available
-        mkdir -p /config/.config/obs-studio/basic/scenes/
-        cp /default_scenes.json "/config/.config/obs-studio/basic/scenes/Default PyleIRL.json" 2>/dev/null || true
-        chown -R abc:abc /config/.config/obs-studio/basic/scenes/
+        # Generate and force PyleDefault Profile and Scene Collection
+        echo -e "\e[1;36m Generating PyleDefault optimized 1080p profile and scenes...\e[0m"
+        cat << 'PYLE_DEFAULT' > /config/setup-pyle-defaults.py
+        import os, json, configparser
+        OBS_CONFIG_DIR = '/config/.config/obs-studio'
+        PROFILES_DIR = os.path.join(OBS_CONFIG_DIR, 'basic', 'profiles', 'PyleDefault')
+        SCENES_DIR = os.path.join(OBS_CONFIG_DIR, 'basic', 'scenes')
+        os.makedirs(PROFILES_DIR, exist_ok=True)
+        os.makedirs(SCENES_DIR, exist_ok=True)
+        basic_ini_content = """[General]
+        Name=PyleDefault
 
-        # If this is a completely fresh install (no global.ini), force OBS to load Default PyleIRL by default
-        if [ ! -f "/config/.config/obs-studio/global.ini" ]; then
-            echo "[Basic]" > /config/.config/obs-studio/global.ini
-            echo "SceneCollection=Default PyleIRL" >> /config/.config/obs-studio/global.ini
-            echo "SceneCollectionFile=Default PyleIRL" >> /config/.config/obs-studio/global.ini
-            chown abc:abc /config/.config/obs-studio/global.ini
-        fi
+        [Video]
+        BaseCX=1920
+        BaseCY=1080
+        OutputCX=1920
+        OutputCY=1080
+        FPSCommon=60
+
+        [SimpleOutput]
+        VBitrate=4500
+        StreamEncoder=x264
+        Preset=fast
+
+        [SRTLA_AutoSwitch]
+        Enabled=true
+        VisEnabled=true
+        RulesJSON=[{"minKbps":0,"maxKbps":800,"targetScene":"Connection Failed"}]
+        VisibilityRulesJSON=[{"minKbps":800,"maxKbps":1500,"sourceName":"Low Signal Strength"}]
+        """
+        with open(os.path.join(PROFILES_DIR, 'basic.ini'), 'w') as f:
+            f.write(basic_ini_content)
+        scene_json = {"current_program_scene":"Live","current_scene":"Live","current_transition":"Fade","groups":[],"modules":{},"name":"PyleDefault","quick_transitions":[],"saved_projectors":[],"scene_order":[{"name":"Live"},{"name":"Connection Failed"}],"sources":[{"balance":0.5,"deinterlace_field_order":0,"deinterlace_mode":0,"enabled":True,"flags":0,"hotkeys":{},"id":"scene","mixers":0,"monitoring_type":0,"muted":False,"name":"Live","prev_ver":503316480,"private_settings":{},"push-to-mute":False,"push-to-mute-delay":0,"push-to-talk":False,"push-to-talk-delay":0,"settings":{"custom_size":False,"id_counter":2,"items":[{"align":5,"bounds":{"x":1920.0,"y":1080.0},"bounds_align":0,"bounds_type":2,"crop_bottom":0,"crop_left":0,"crop_right":0,"crop_top":0,"group_item_backup":False,"id":1,"locked":False,"name":"SRTLA Camera","pos":{"x":0.0,"y":0.0},"private_settings":{},"rot":0.0,"scale":{"x":1.0,"y":1.0},"scale_filter":"disable","visible":True},{"align":5,"bounds":{"x":1920.0,"y":1080.0},"bounds_align":0,"bounds_type":0,"crop_bottom":0,"crop_left":0,"crop_right":0,"crop_top":0,"group_item_backup":False,"id":2,"locked":False,"name":"Low Signal Strength","pos":{"x":750.0,"y":950.0},"private_settings":{},"rot":0.0,"scale":{"x":1.0,"y":1.0},"scale_filter":"disable","visible":True}]},"sync":0,"versioned_id":"scene","volume":1.0},{"balance":0.5,"deinterlace_field_order":0,"deinterlace_mode":0,"enabled":True,"flags":0,"hotkeys":{},"id":"scene","mixers":0,"monitoring_type":0,"muted":False,"name":"Connection Failed","prev_ver":503316480,"private_settings":{},"push-to-mute":False,"push-to-mute-delay":0,"push-to-talk":False,"push-to-talk-delay":0,"settings":{"custom_size":False,"id_counter":1,"items":[{"align":5,"bounds":{"x":1920.0,"y":1080.0},"bounds_align":0,"bounds_type":0,"crop_bottom":0,"crop_left":0,"crop_right":0,"crop_top":0,"group_item_backup":False,"id":1,"locked":False,"name":"Connection Failed Text","pos":{"x":650.0,"y":450.0},"private_settings":{},"rot":0.0,"scale":{"x":1.0,"y":1.0},"scale_filter":"disable","visible":True}]},"sync":0,"versioned_id":"scene","volume":1.0},{"balance":0.5,"deinterlace_field_order":0,"deinterlace_mode":0,"enabled":True,"flags":0,"hotkeys":{},"id":"srtla_source","mixers":255,"monitoring_type":0,"muted":False,"name":"SRTLA Camera","prev_ver":503316480,"private_settings":{},"push-to-mute":False,"push-to-mute-delay":0,"push-to-talk":False,"push-to-talk-delay":0,"settings":{"port":5050},"sync":0,"versioned_id":"srtla_source","volume":1.0},{"balance":0.5,"deinterlace_field_order":0,"deinterlace_mode":0,"enabled":True,"flags":0,"hotkeys":{},"id":"text_ft2_source_v2","mixers":255,"monitoring_type":0,"muted":False,"name":"Low Signal Strength","prev_ver":503316480,"private_settings":{},"push-to-mute":False,"push-to-mute-delay":0,"push-to-talk":False,"push-to-talk-delay":0,"settings":{"color1":4278190335,"text":"Low Signal Strength"},"sync":0,"versioned_id":"text_ft2_source_v2","volume":1.0},{"balance":0.5,"deinterlace_field_order":0,"deinterlace_mode":0,"enabled":True,"flags":0,"hotkeys":{},"id":"text_ft2_source_v2","mixers":255,"monitoring_type":0,"muted":False,"name":"Connection Failed Text","prev_ver":503316480,"private_settings":{},"push-to-mute":False,"push-to-mute-delay":0,"push-to-talk":False,"push-to-talk-delay":0,"settings":{"color1":4278190335,"text":"Connection Failed"},"sync":0,"versioned_id":"text_ft2_source_v2","volume":1.0}],"transition_duration":300,"transitions":[]}
+        with open(os.path.join(SCENES_DIR, 'PyleDefault.json'), 'w') as f:
+            json.dump(scene_json, f)
+        global_ini_path = os.path.join(OBS_CONFIG_DIR, 'global.ini')
+        config = configparser.ConfigParser(strict=False)
+        config.optionxform = str
+        if os.path.exists(global_ini_path):
+            config.read(global_ini_path)
+        if not config.has_section('BasicWindow'):
+            config.add_section('BasicWindow')
+        config.set('BasicWindow', 'ProfileDir', 'PyleDefault')
+        config.set('BasicWindow', 'SceneCollection', 'PyleDefault')
+        config.set('BasicWindow', 'SceneCollectionFile', 'PyleDefault')
+        with open(global_ini_path, 'w') as f:
+            config.write(f)
+        PYLE_DEFAULT
+        python3 /config/setup-pyle-defaults.py
+        chown -R abc:abc /config/.config/obs-studio/
 
         # Force the desktop resolution to 1080p so OBS natively defaults to a 1080p canvas
         xrandr -s 1920x1080 >/dev/null 2>&1 || true
