@@ -136,7 +136,7 @@ static void handle_api_settings_post(const httplib::Request &req, httplib::Respo
 		if (obj.contains("web_access_password"))
 			config_set_string(global_config, "SRTLA", "WebAccessPassword",
 					  obj["web_access_password"].toString().toUtf8().constData());
-					  
+
 		if (obj.contains("ws_url_override"))
 			config_set_string(global_config, "SRTLA", "WSUrl",
 					  obj["ws_url_override"].toString().toUtf8().constData());
