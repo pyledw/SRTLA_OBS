@@ -30,6 +30,7 @@ OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 extern struct obs_source_info srtla_source_info;
 
 extern void *create_srtla_dock();
+extern void *create_srtla_multistream_dock();
 extern void setup_srtla_menu();
 
 char *srtla_get_frpc_path(void) {
@@ -45,6 +46,7 @@ static void frontend_event_cb(enum obs_frontend_event event, void *private_data)
 	if (event == OBS_FRONTEND_EVENT_FINISHED_LOADING) {
 		setup_srtla_menu();
 		obs_frontend_add_custom_qdock("srtla_status_dock", create_srtla_dock());
+		obs_frontend_add_custom_qdock("srtla_multistream_dock", create_srtla_multistream_dock());
 	}
 }
 

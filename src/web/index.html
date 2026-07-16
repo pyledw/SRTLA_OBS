@@ -150,6 +150,16 @@
     </style>
 </head>
 <body>
+    <!-- LOGIN OVERLAY -->
+    <div id="login-overlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.95); z-index:9999; align-items:center; justify-content:center; flex-direction:column;">
+        <div class="panel" style="width: 320px; text-align:center;">
+            <h2 style="margin-bottom:15px;">Web Interface Locked</h2>
+            <div style="margin-bottom:20px;">
+                <input type="password" id="login-password" placeholder="Access Password" style="width:100%;" onkeydown="if(event.key === 'Enter') submitLogin()">
+            </div>
+            <button onclick="submitLogin()" style="width:100%; font-size:1.1rem; padding:10px;">Login</button>
+        </div>
+    </div>
 
     <h1>PyleIRL Control Panel</h1>
 
@@ -157,6 +167,8 @@
         <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
         <div class="tab" onclick="switchTab('streaming')">Streaming</div>
         <div class="tab" onclick="switchTab('settings')">Plugin Settings</div>
+        <div class="tab" onclick="switchTab('obs-settings')">OBS Settings</div>
+        <div class="tab" onclick="switchTab('multistream')">Multistream</div>
         <div class="tab" onclick="switchTab('monitor')">SRTLA Monitor</div>
     </div>
 
@@ -169,13 +181,20 @@
                     <span class="status disconnected" id="ws-status-indicator"></span>
                     <span id="ws-status-text">Disconnected</span>
                 </div>
-                <button class="btn-warning" onclick="restartOBS()">Restart OBS</button>
+                <div style="display:flex; gap:10px;">
+                    <div id="obs-stream-status" style="display:none; align-items:center; gap:10px; background:rgba(0,0,0,0.2); padding:5px 15px; border-radius:5px;">
+                        <span id="obs-stream-indicator" class="status disconnected"></span>
+                        <span id="obs-stream-text" style="font-weight:bold;">OFFLINE</span>
+                        <button id="obs-stream-btn" onclick="toggleOBSStream()" style="padding:5px 15px; font-weight:bold;"></button>
+                    </div>
+                    <button class="btn-warning" onclick="restartOBS()">Restart OBS</button>
+                </div>
             </div>
             
             <div id="ws-auth-section" class="input-group" style="display:none;">
                 <input type="text" id="ws-url" value="ws://localhost:4455" placeholder="WebSocket URL">
                 <input type="password" id="ws-password" placeholder="OBS WebSocket Password">
-                <button onclick="connectOBS()">Connect</button>
+                <button onclick="connectOBS()">Save & Connect</button>
             </div>
         </div>
 
@@ -187,9 +206,31 @@
             </div>
         </div>
 
+        <div class="panel" id="mainstream-dashboard-panel" style="display:none;">
+            <h2>OBS Main Stream Stats</h2>
+            <div id="mainstream-metrics" style="background:rgba(0,0,0,0.2); padding:10px; border-radius:5px; font-size:0.9rem;"></div>
+        </div>
+
+        <div class="panel" id="multistream-dashboard-panel" style="display:none;">
+            <h2>Multistream Status</h2>
+            <div id="multistream-dashboard-container" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+        
+        <div class="panel" id="srtla-stats-panel">
+            <h2>SRTLA Live Stats</h2>
+            <div id="srtla-stats-container" style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                <div style="color:var(--text-muted); font-style:italic;">No active connections.</div>
+            </div>
+        </div>
+
         <div class="panel" id="scenes-panel" style="display:none;">
             <h2>Scenes</h2>
             <div class="scenes-grid" id="scenes-container"></div>
+        </div>
+
+        <div class="panel" id="sources-panel" style="display:none;">
+            <h2>Sources <span style="font-size:0.9rem; font-weight:normal; color:var(--text-muted);">(Current Scene)</span></h2>
+            <div class="scenes-grid" id="sources-container"></div>
         </div>
     </div>
 
@@ -227,23 +268,30 @@
             <div class="setting-row">
                 <span>Enable Reverse Proxy (FRP)</span>
                 <label class="toggle-switch">
-                    <input type="checkbox" id="setting-proxy" onchange="saveBasicSettings()">
+                    <input type="checkbox" id="setting-proxy">
                     <span class="slider"></span>
                 </label>
             </div>
             <div class="setting-row">
                 <span>Enable Scene Auto-Switcher</span>
                 <label class="toggle-switch">
-                    <input type="checkbox" id="setting-autoswitch" onchange="saveBasicSettings()">
+                    <input type="checkbox" id="setting-autoswitch">
                     <span class="slider"></span>
                 </label>
             </div>
             <div class="setting-row">
                 <span>Enable Source Visibility Switcher</span>
                 <label class="toggle-switch">
-                    <input type="checkbox" id="setting-vis-autoswitch" onchange="saveBasicSettings()">
+                    <input type="checkbox" id="setting-vis-autoswitch">
                     <span class="slider"></span>
                 </label>
+            </div>
+            <div class="setting-row">
+                <span>Web Interface Session</span>
+                <button class="btn-danger" onclick="logout()" style="padding:5px 10px;">Logout</button>
+            </div>
+            <div style="margin-top:20px; text-align:right;">
+                <button onclick="saveBasicSettings()">Save Settings</button>
             </div>
         </div>
 
@@ -252,8 +300,147 @@
             <table id="rules-table">
                 <tr><th>Min Kbps</th><th>Max Kbps</th><th>Target Scene</th><th></th></tr>
             </table>
+        </div>
+        <div class="panel">
+            <h2>Source Visibility Rules <button style="float:right; padding:5px 10px;" onclick="addVisAutoSwitchRule()">+ Add</button></h2>
+            <table id="vis-rules-table">
+                <tr><th>Min Kbps</th><th>Max Kbps</th><th>Target Source</th><th></th></tr>
+            </table>
             <br>
-            <button onclick="saveAutoSwitchRules()">Save Rules</button>
+            <button onclick="saveAutoSwitchRules()">Save All Rules</button>
+        </div>
+    </div>
+
+    <!-- OBS SETTINGS TAB -->
+    <div id="tab-obs-settings" class="tab-content">
+        <div class="panel">
+            <h2>Video Settings</h2>
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start; margin-bottom:15px; border-bottom:none;">
+                <label style="margin-bottom:5px; font-weight:bold;">Base Resolution</label>
+                <input type="text" id="obs-base-res" placeholder="1920x1080" style="width:100%; box-sizing:border-box;">
+            </div>
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start; margin-bottom:15px; border-bottom:none;">
+                <label style="margin-bottom:5px; font-weight:bold;">Output Resolution</label>
+                <input type="text" id="obs-output-res" placeholder="1920x1080" style="width:100%; box-sizing:border-box;">
+            </div>
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start; margin-bottom:15px; border-bottom:none;">
+                <label style="margin-bottom:5px; font-weight:bold;">FPS (Numerator / Denominator)</label>
+                <div style="display:flex; gap:10px; width:100%;">
+                    <input type="number" id="obs-fps-num" placeholder="60" style="flex-grow:1;">
+                    <input type="number" id="obs-fps-den" placeholder="1" style="flex-grow:1;">
+                </div>
+            </div>
+            <div style="margin-top:10px; text-align:right;">
+                <button onclick="saveOBSVideoSettings()">Apply Video Settings</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Recording Settings</h2>
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start; margin-bottom:15px; border-bottom:none;">
+                <label style="margin-bottom:5px; font-weight:bold;">Record Directory</label>
+                <input type="text" id="obs-record-dir" style="width:100%; box-sizing:border-box;">
+            </div>
+            <div style="margin-top:10px; text-align:right;">
+                <button onclick="saveOBSRecordSettings()">Apply Recording Settings</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Profiles & Collections</h2>
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start; margin-bottom:15px; border-bottom:none;">
+                <label style="margin-bottom:5px; font-weight:bold;">Active Profile</label>
+                <div style="display:flex; width:100%; gap:10px;">
+                    <select id="obs-profile-sel" style="flex-grow:1;"></select>
+                    <button onclick="setOBSProfile()">Switch</button>
+                </div>
+            </div>
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start; margin-bottom:15px; border-bottom:none;">
+                <label style="margin-bottom:5px; font-weight:bold;">Active Scene Collection</label>
+                <div style="display:flex; width:100%; gap:10px;">
+                    <select id="obs-scene-collection-sel" style="flex-grow:1;"></select>
+                    <button onclick="setOBSSceneCollection()">Switch</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>Source Settings (Dynamic JSON)</h2>
+            <div style="margin-bottom:15px; font-size:0.9rem; color:var(--text-muted);">
+                Select any source in OBS to dynamically pull its full raw configuration. You can modify any supported property via this JSON editor.
+            </div>
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start; margin-bottom:15px; border-bottom:none;">
+                <label style="margin-bottom:5px; font-weight:bold;">Select Source</label>
+                <select id="obs-dynamic-source-sel" class="rsrc" onchange="fetchSourceSettings(this.value)" style="width:100%;"></select>
+            </div>
+            <div id="obs-source-settings-container" style="margin-top:15px; display:none;">
+                <h3 id="obs-source-settings-title" style="margin-bottom:10px;"></h3>
+                <textarea id="obs-source-settings-json" style="width:100%; box-sizing:border-box; height:300px; font-family:monospace; background:rgba(0,0,0,0.5); color:var(--text); border:1px solid #444; border-radius:4px; padding:10px;"></textarea>
+                <div style="margin-top:10px; text-align:right;">
+                    <button onclick="saveOBSSourceSettings()">Apply Source Settings</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>System Toggles</h2>
+            <div class="setting-row">
+                <span>Virtual Camera</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="obs-toggle-vcam" onchange="toggleOBSFeature('vcam', this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="setting-row">
+                <span>Studio Mode</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="obs-toggle-studio" onchange="toggleOBSFeature('studio', this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="setting-row">
+                <span>Replay Buffer</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="obs-toggle-replay" onchange="toggleOBSFeature('replay', this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Transitions</h2>
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start; margin-bottom:15px; border-bottom:none;">
+                <label style="margin-bottom:5px; font-weight:bold;">Current Transition</label>
+                <div style="display:flex; width:100%; gap:10px;">
+                    <select id="obs-transition-sel" style="flex-grow:1;"></select>
+                    <button onclick="setOBSTransition()">Set Active</button>
+                </div>
+            </div>
+        </div>
+
+        </div>
+    </div>
+
+    <!-- MULTISTREAM TAB -->
+    <div id="tab-multistream" class="tab-content">
+        <div class="panel">
+            <h2>Multistream Settings</h2>
+            <div class="setting-row">
+                <span>Sync with OBS Live (Start/Stop targets when OBS starts/stops streaming)</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="setting-multistream-sync" onchange="saveBasicSettings()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+        <div class="panel">
+            <h2>Multistream Connections <button style="float:right; padding:5px 10px;" onclick="openTargetModal()">+ Add</button></h2>
+            <div style="margin-bottom:15px; font-size:0.9rem; color:var(--text-muted);">
+                Monitor and control additional streaming destinations (RTMP/SRT).
+            </div>
+            <table id="multistream-table">
+                <tr><th>Name</th><th>Type</th><th>Status</th><th>Actions</th></tr>
+            </table>
         </div>
     </div>
 
@@ -265,9 +452,28 @@
                 <tr><th>Name</th><th>Port</th><th>Status</th><th>Actions</th></tr>
             </table>
         </div>
-        <div class="panel">
-            <h2>Live Stats</h2>
-            <pre id="stats-pre" style="background:rgba(0,0,0,0.3); padding:15px; border-radius:6px; overflow-x:auto;">Loading...</pre>
+        </div>
+    </div>
+    </div>
+
+    <!-- TARGET MODAL -->
+    <div id="target-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center;">
+        <div class="panel" style="width: 400px;">
+            <h2 id="target-modal-title">Add Target</h2>
+            <input type="hidden" id="target-id">
+            <div class="input-group" style="flex-direction:column;">
+                <input type="text" id="target-name" placeholder="Name (e.g. Twitch)">
+                <select id="target-type">
+                    <option value="RTMP">RTMP</option>
+                    <option value="SRT">SRT</option>
+                </select>
+                <input type="text" id="target-url" placeholder="rtmp://... or srt://...">
+                <input type="password" id="target-key" placeholder="Stream Key">
+            </div>
+            <div style="text-align:right; margin-top:15px;">
+                <button class="btn-warning" onclick="document.getElementById('target-modal').style.display='none'">Cancel</button>
+                <button onclick="saveTarget()">Save</button>
+            </div>
         </div>
     </div>
 
@@ -294,37 +500,48 @@
         }
 
         async function init() {
-            // 1. Get OBS WS Config & auto connect
+            // 1. Load settings (including aggressive backend password storage)
+            let data = {};
+            try {
+                const res = await fetch('/api/settings');
+                data = await res.json();
+                document.getElementById('setting-proxy').checked = data.proxy_enabled;
+                document.getElementById('setting-autoswitch').checked = data.autoswitch_enabled;
+                document.getElementById('setting-vis-autoswitch').checked = data.vis_autoswitch_enabled;
+                document.getElementById('setting-multistream-sync').checked = data.sync_with_obs_live;
+                document.getElementById('ws-password').value = data.ws_password || savedPwd || "";
+            } catch(e) { console.error(e); }
+
+            // 2. Get OBS WS Config & auto connect
             try {
                 const res = await fetch('/api/obs_ws_config');
                 const conf = await res.json();
                 
                 let savedUrl = localStorage.getItem('wsUrl');
                 let savedPwd = localStorage.getItem('wsPassword');
+                
+                document.getElementById('ws-url').value = savedUrl || (conf.ws_port ? `ws://localhost:${conf.ws_port}` : 'ws://localhost:4455');
+                document.getElementById('ws-password').value = data.ws_password || savedPwd || "";
 
-                if (conf.ws_enabled) {
-                    document.getElementById('ws-url').value = savedUrl || `ws://localhost:${conf.ws_port}`;
-                    document.getElementById('ws-password').value = conf.ws_password || savedPwd || "";
-                    if (document.getElementById('ws-password').value) {
-                        connectOBS();
+                if (document.getElementById('ws-password').value) {
+                    connectOBS();
+                } else {
+                    if (conf.ws_enabled === false) {
+                        document.getElementById('ws-status-text').innerText = "OBS WebSocket might be disabled. Password required.";
                     } else {
                         document.getElementById('ws-status-text').innerText = "OBS WebSocket requires a password.";
-                        document.getElementById('ws-auth-section').style.display = 'flex';
                     }
-                } else {
-                    document.getElementById('ws-status-text').innerText = "OBS WebSocket is disabled!";
-                    document.getElementById('ws-status-indicator').className = "status disconnected";
                     document.getElementById('ws-auth-section').style.display = 'flex';
+                    
+                    // Watch for browser password manager autofill
+                    let autofillCheck = setInterval(() => {
+                        if (document.getElementById('ws-password').value) {
+                            clearInterval(autofillCheck);
+                            connectOBS();
+                        }
+                    }, 500);
+                    setTimeout(() => clearInterval(autofillCheck), 3000);
                 }
-            } catch(e) { console.error(e); }
-
-            // 2. Load settings
-            try {
-                const res = await fetch('/api/settings');
-                const data = await res.json();
-                document.getElementById('setting-proxy').checked = data.proxy_enabled;
-                document.getElementById('setting-autoswitch').checked = data.autoswitch_enabled;
-                document.getElementById('setting-vis-autoswitch').checked = data.vis_autoswitch_enabled;
             } catch(e) { console.error(e); }
 
             // 3. Load stream key
@@ -341,6 +558,10 @@
             // 5. Start polling receivers
             statsInterval = setInterval(pollReceivers, 2000);
             pollReceivers();
+
+            // 6. Start polling multistream
+            setInterval(pollMultistream, 2000);
+            pollMultistream();
         }
 
         let isRestarting = false;
@@ -349,8 +570,8 @@
             const url = document.getElementById('ws-url').value;
             const password = document.getElementById('ws-password').value;
             
-            localStorage.setItem('wsUrl', url);
-            localStorage.setItem('wsPassword', password);
+            if (url) localStorage.setItem('wsUrl', url);
+            if (password) localStorage.setItem('wsPassword', password);
 
             if (ws) ws.close();
             
@@ -374,15 +595,43 @@
                     document.getElementById('preview-panel').style.display = 'block';
                     document.getElementById('scenes-panel').style.display = 'block';
                     sendRequest("GetSceneList");
+                    sendRequest("GetStreamStatus");
+                    sendRequest("GetInputList");
+                    sendRequest("GetVideoSettings");
+                    sendRequest("GetRecordDirectory");
+                    sendRequest("GetProfileList");
+                    sendRequest("GetSceneCollectionList");
+                    sendRequest("GetVirtualCamStatus");
+                    sendRequest("GetStudioModeEnabled");
+                    sendRequest("GetReplayBufferStatus");
+                    sendRequest("GetSceneTransitionList");
                     if(previewInterval) clearInterval(previewInterval);
                     previewInterval = setInterval(() => {
                         if(currentScene) sendRequest("GetSourceScreenshot", { sourceName: currentScene, imageFormat: "jpeg", imageWidth: 640, imageHeight: 360, imageCompressionQuality: 50 });
-                    }, 1000);
+                        sendRequest("GetStreamStatus");
+                    }, 1500);
                 }
-                else if (msg.op === 5 && msg.d.eventType === "CurrentProgramSceneChanged") {
-                    currentScene = msg.d.eventData.sceneName;
-                    document.getElementById('current-scene-name').innerText = "- " + currentScene;
-                    renderScenes(cachedScenes);
+                else if (msg.op === 5) {
+                    if (msg.d.eventType === "CurrentProgramSceneChanged") {
+                        currentScene = msg.d.eventData.sceneName;
+                        document.getElementById('current-scene-name').innerText = "- " + currentScene;
+                        renderScenes(cachedScenes);
+                        sendRequest("GetSceneItemList", { sceneName: currentScene });
+                    } else if (msg.d.eventType === "SceneItemEnableStateChanged") {
+                        if (msg.d.eventData.sceneName === currentScene) {
+                            sendRequest("GetSceneItemList", { sceneName: currentScene });
+                        }
+                    } else if (msg.d.eventType === "StreamStateChanged") {
+                        updateStreamStatusUI(msg.d.eventData.outputActive, msg.d.eventData.outputState);
+                    } else if (msg.d.eventType === "VirtualcamStateChanged") {
+                        document.getElementById('obs-toggle-vcam').checked = msg.d.eventData.outputActive;
+                    } else if (msg.d.eventType === "ReplayBufferStateChanged") {
+                        document.getElementById('obs-toggle-replay').checked = msg.d.eventData.outputActive;
+                    } else if (msg.d.eventType === "StudioModeStateChanged") {
+                        document.getElementById('obs-toggle-studio').checked = msg.d.eventData.studioModeEnabled;
+                    } else if (msg.d.eventType === "CurrentSceneTransitionChanged") {
+                        document.getElementById('obs-transition-sel').value = msg.d.eventData.transitionName;
+                    }
                 }
                 else if (msg.op === 7) {
                     if (msg.d.requestType === "GetSceneList") {
@@ -390,15 +639,116 @@
                         document.getElementById('current-scene-name').innerText = "- " + currentScene;
                         cachedScenes = msg.d.responseData.scenes;
                         renderScenes(cachedScenes);
+                        updateDropdowns();
+                        sendRequest("GetSceneItemList", { sceneName: currentScene });
+                    }
+                    else if (msg.d.requestType === "GetSceneItemList") {
+                        document.getElementById('sources-panel').style.display = 'block';
+                        renderSources(msg.d.responseData.sceneItems);
                     }
                     else if (msg.d.requestType === "GetSourceScreenshot") {
                         document.getElementById('preview-image').src = msg.d.responseData.imageData;
                         document.getElementById('preview-image').style.display = "block";
                         document.getElementById('preview-placeholder').style.display = "none";
                     }
+                    else if (msg.d.requestType === "GetStreamStatus") {
+                        const data = msg.d.responseData;
+                        updateStreamStatusUI(data.outputActive, data.outputState);
+                        
+                        const mainDashPanel = document.getElementById('mainstream-dashboard-panel');
+                        const mainDashMetrics = document.getElementById('mainstream-metrics');
+                        if (data.outputActive) {
+                            mainDashPanel.style.display = 'block';
+                            mainDashMetrics.innerHTML = `
+                                <strong>Duration:</strong> ${data.outputTimecode}<br>
+                                <strong>Data Sent:</strong> ${(data.outputBytes / 1024 / 1024).toFixed(2)} MB<br>
+                                <strong>Dropped Frames:</strong> ${data.outputSkippedFrames} / ${data.outputTotalFrames}
+                            `;
+                        } else {
+                            mainDashPanel.style.display = 'none';
+                        }
+                    }
+                    else if (msg.d.requestType === "GetInputList") {
+                        cachedSources = msg.d.responseData.inputs.map(i => i.inputName);
+                        updateDropdowns();
+                    }
+                    else if (msg.d.requestType === "GetVideoSettings") {
+                        document.getElementById('obs-base-res').value = msg.d.responseData.baseWidth + 'x' + msg.d.responseData.baseHeight;
+                        document.getElementById('obs-output-res').value = msg.d.responseData.outputWidth + 'x' + msg.d.responseData.outputHeight;
+                        document.getElementById('obs-fps-num').value = msg.d.responseData.fpsNumerator;
+                        document.getElementById('obs-fps-den').value = msg.d.responseData.fpsDenominator;
+                    }
+                    else if (msg.d.requestType === "GetRecordDirectory") {
+                        document.getElementById('obs-record-dir').value = msg.d.responseData.recordDirectory;
+                    }
+                    else if (msg.d.requestType === "GetProfileList") {
+                        const sel = document.getElementById('obs-profile-sel');
+                        sel.innerHTML = "";
+                        msg.d.responseData.profiles.forEach(p => {
+                            sel.innerHTML += `<option value="${p}" ${p === msg.d.responseData.currentProfileName ? "selected" : ""}>${p}</option>`;
+                        });
+                    }
+                    else if (msg.d.requestType === "GetSceneCollectionList") {
+                        const sel = document.getElementById('obs-scene-collection-sel');
+                        sel.innerHTML = "";
+                        msg.d.responseData.sceneCollections.forEach(c => {
+                            sel.innerHTML += `<option value="${c}" ${c === msg.d.responseData.currentSceneCollectionName ? "selected" : ""}>${c}</option>`;
+                        });
+                    }
+                    else if (msg.d.requestType === "GetInputSettings") {
+                        document.getElementById('obs-source-settings-container').style.display = 'block';
+                        document.getElementById('obs-source-settings-title').innerText = msg.d.requestData.inputName + " Settings (" + msg.d.responseData.inputKind + ")";
+                        document.getElementById('obs-source-settings-json').value = JSON.stringify(msg.d.responseData.inputSettings, null, 2);
+                    }
+                    else if (msg.d.requestType === "GetVirtualCamStatus") {
+                        document.getElementById('obs-toggle-vcam').checked = msg.d.responseData.outputActive;
+                    }
+                    else if (msg.d.requestType === "GetStudioModeEnabled") {
+                        document.getElementById('obs-toggle-studio').checked = msg.d.responseData.studioModeEnabled;
+                    }
+                    else if (msg.d.requestType === "GetReplayBufferStatus") {
+                        document.getElementById('obs-toggle-replay').checked = msg.d.responseData.outputActive;
+                    }
+                    else if (msg.d.requestType === "GetSceneTransitionList") {
+                        const sel = document.getElementById('obs-transition-sel');
+                        sel.innerHTML = "";
+                        msg.d.responseData.transitions.forEach(t => {
+                            sel.innerHTML += `<option value="${t.transitionName}" ${t.transitionName === msg.d.responseData.currentSceneTransitionName ? "selected" : ""}>${t.transitionName}</option>`;
+                        });
+                    }
+                    else if (msg.d.requestType === "GetSceneItemList") {
+                        const sel = document.getElementById('obs-transform-item-sel');
+                        sel.innerHTML = '<option value="">-- Select Item --</option>';
+                        msg.d.responseData.sceneItems.forEach(i => {
+                            sel.innerHTML += `<option value="${i.sceneItemId}">${i.sourceName}</option>`;
+                        });
+                        document.getElementById('obs-transform-settings-container').style.display = 'none';
+                    }
+                    else if (msg.d.requestType === "GetSceneItemTransform") {
+                        document.getElementById('obs-transform-settings-container').style.display = 'block';
+                        document.getElementById('obs-transform-settings-json').value = JSON.stringify(msg.d.responseData.sceneItemTransform, null, 2);
+                    }
+                    else if (msg.d.requestType === "GetSourceFilterList") {
+                        const sel = document.getElementById('obs-filter-sel');
+                        sel.innerHTML = '<option value="">-- Select Filter --</option>';
+                        msg.d.responseData.filters.forEach(f => {
+                            sel.innerHTML += `<option value="${f.filterName}">${f.filterName}</option>`;
+                        });
+                        document.getElementById('obs-filter-settings-container').style.display = 'none';
+                    }
+                    else if (msg.d.requestType === "GetSourceFilter") {
+                        document.getElementById('obs-filter-settings-container').style.display = 'block';
+                        document.getElementById('obs-filter-settings-json').value = JSON.stringify(msg.d.responseData.filterSettings, null, 2);
+                    }
                 }
             };
-            ws.onclose = () => {
+            ws.onclose = (e) => {
+                if (e.code === 4005) {
+                    document.getElementById('ws-status-indicator').className = "status disconnected";
+                    document.getElementById('ws-status-text').innerText = "Authentication Failed. Please check password.";
+                    document.getElementById('ws-auth-section').style.display = 'flex';
+                    return;
+                }
                 document.getElementById('ws-status-indicator').className = "status disconnected";
                 document.getElementById('ws-status-text').innerText = isRestarting ? "RESTARTING OBS..." : "Disconnected (Retrying...)";
                 if(previewInterval) clearInterval(previewInterval);
@@ -417,6 +767,31 @@
             }
         }
 
+        function toggleOBSStream() {
+            sendRequest("ToggleStream");
+        }
+
+        function updateStreamStatusUI(isActive, state = null) {
+            document.getElementById('obs-stream-status').style.display = 'flex';
+            const indicator = document.getElementById('obs-stream-indicator');
+            const text = document.getElementById('obs-stream-text');
+            const btn = document.getElementById('obs-stream-btn');
+            
+            if (isActive) {
+                indicator.className = "status connected";
+                text.innerText = "LIVE";
+                text.style.color = "#ff4d4d";
+                btn.innerText = "Stop Stream";
+                btn.className = "btn-danger";
+            } else {
+                indicator.className = "status disconnected";
+                text.innerText = state === "OBS_WEBSOCKET_OUTPUT_STARTING" ? "STARTING..." : "OFFLINE";
+                text.style.color = "var(--text)";
+                btn.innerText = "Start Stream";
+                btn.className = "btn-outline";
+            }
+        }
+
         function renderScenes(scenes) {
             const cont = document.getElementById('scenes-container');
             cont.innerHTML = "";
@@ -427,6 +802,117 @@
                 btn.onclick = () => sendRequest("SetCurrentProgramScene", { sceneName: scene.sceneName });
                 cont.appendChild(btn);
             });
+        }
+
+        function renderSources(items) {
+            const cont = document.getElementById('sources-container');
+            cont.innerHTML = "";
+            items.slice().reverse().forEach(item => {
+                const btn = document.createElement("div");
+                btn.className = "scene-btn";
+                if (!item.sceneItemEnabled) btn.style.opacity = "0.4";
+                btn.innerText = item.sourceName;
+                btn.onclick = () => sendRequest("SetSceneItemEnabled", { sceneName: currentScene, sceneItemId: item.sceneItemId, sceneItemEnabled: !item.sceneItemEnabled });
+                cont.appendChild(btn);
+            });
+        }
+
+        function saveOBSVideoSettings() {
+            const base = document.getElementById('obs-base-res').value.split('x');
+            const out = document.getElementById('obs-output-res').value.split('x');
+            sendRequest("SetVideoSettings", {
+                baseWidth: parseInt(base[0]), baseHeight: parseInt(base[1]),
+                outputWidth: parseInt(out[0]), outputHeight: parseInt(out[1]),
+                fpsNumerator: parseInt(document.getElementById('obs-fps-num').value),
+                fpsDenominator: parseInt(document.getElementById('obs-fps-den').value)
+            });
+            alert("Video Settings Applied!");
+        }
+
+        function saveOBSRecordSettings() {
+            sendRequest("SetRecordDirectory", { recordDirectory: document.getElementById('obs-record-dir').value });
+            alert("Record Directory Applied!");
+        }
+
+        function setOBSProfile() {
+            sendRequest("SetCurrentProfile", { profileName: document.getElementById('obs-profile-sel').value });
+        }
+
+        function setOBSSceneCollection() {
+            sendRequest("SetCurrentSceneCollection", { sceneCollectionName: document.getElementById('obs-scene-collection-sel').value });
+        }
+
+        function fetchSourceSettings(sourceName) {
+            if (!sourceName) return;
+            // The requestData must be injected cleanly via our sendRequest function
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ op: 6, d: { requestType: "GetInputSettings", requestId: Math.random().toString(), requestData: { inputName: sourceName } } }));
+            }
+        }
+
+        function saveOBSSourceSettings() {
+            const sourceName = document.getElementById('obs-source-settings-title').innerText.split(" Settings")[0];
+            try {
+                const settings = JSON.parse(document.getElementById('obs-source-settings-json').value);
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ op: 6, d: { requestType: "SetInputSettings", requestId: Math.random().toString(), requestData: { inputName: sourceName, inputSettings: settings } } }));
+                }
+                alert("Source Settings Applied!");
+            } catch(e) {
+                alert("Invalid JSON format!");
+            }
+        }
+
+        function toggleOBSFeature(feature, state) {
+            if (feature === 'vcam') sendRequest(state ? "StartVirtualCam" : "StopVirtualCam");
+            if (feature === 'replay') sendRequest(state ? "StartReplayBuffer" : "StopReplayBuffer");
+            if (feature === 'studio') sendRequest("SetStudioModeEnabled", { studioModeEnabled: state });
+        }
+
+        function setOBSTransition() {
+            sendRequest("SetCurrentSceneTransition", { transitionName: document.getElementById('obs-transition-sel').value });
+        }
+
+        function fetchSceneItems(sceneName) {
+            if (!sceneName) return;
+            sendRequest("GetSceneItemList", { sceneName: sceneName });
+        }
+
+        function fetchSceneItemTransform(itemId) {
+            if (!itemId) return;
+            const sceneName = document.getElementById('obs-transform-scene-sel').value;
+            sendRequest("GetSceneItemTransform", { sceneName: sceneName, sceneItemId: parseInt(itemId) });
+        }
+
+        function saveOBSTransformSettings() {
+            const sceneName = document.getElementById('obs-transform-scene-sel').value;
+            const itemId = document.getElementById('obs-transform-item-sel').value;
+            try {
+                const transform = JSON.parse(document.getElementById('obs-transform-settings-json').value);
+                sendRequest("SetSceneItemTransform", { sceneName: sceneName, sceneItemId: parseInt(itemId), sceneItemTransform: transform });
+                alert("Transform Applied!");
+            } catch(e) { alert("Invalid JSON!"); }
+        }
+
+        function fetchSourceFilters(sourceName) {
+            if (!sourceName) return;
+            sendRequest("GetSourceFilterList", { sourceName: sourceName });
+        }
+
+        function fetchFilterSettings(filterName) {
+            if (!filterName) return;
+            const sourceName = document.getElementById('obs-filter-source-sel').value;
+            sendRequest("GetSourceFilter", { sourceName: sourceName, filterName: filterName });
+        }
+
+        function saveOBSFilterSettings() {
+            const sourceName = document.getElementById('obs-filter-source-sel').value;
+            const filterName = document.getElementById('obs-filter-sel').value;
+            try {
+                const settings = JSON.parse(document.getElementById('obs-filter-settings-json').value);
+                sendRequest("SetSourceFilterSettings", { sourceName: sourceName, filterName: filterName, filterSettings: settings });
+                alert("Filter Settings Applied!");
+            } catch(e) { alert("Invalid JSON!"); }
         }
 
         async function restartOBS() {
@@ -478,19 +964,57 @@
                 body: JSON.stringify({
                     proxy_enabled: document.getElementById('setting-proxy').checked,
                     autoswitch_enabled: document.getElementById('setting-autoswitch').checked,
-                    vis_autoswitch_enabled: document.getElementById('setting-vis-autoswitch').checked
+                    vis_autoswitch_enabled: document.getElementById('setting-vis-autoswitch').checked,
+                    sync_with_obs_live: document.getElementById('setting-multistream-sync').checked
                 })
+            });
+        }
+
+        let cachedSources = [];
+
+        function updateDropdowns() {
+            document.querySelectorAll('.rscene').forEach(sel => {
+                const currentVal = sel.value || sel.getAttribute('data-val');
+                sel.innerHTML = "";
+                if (currentVal && (!cachedScenes || !cachedScenes.find(s => s.sceneName === currentVal))) {
+                    sel.innerHTML += `<option value="${currentVal}">${currentVal}</option>`;
+                }
+                if (cachedScenes) {
+                    cachedScenes.forEach(s => {
+                        sel.innerHTML += `<option value="${s.sceneName}">${s.sceneName}</option>`;
+                    });
+                }
+                sel.value = currentVal;
+            });
+            
+            document.querySelectorAll('.rsrc').forEach(sel => {
+                const currentVal = sel.value || sel.getAttribute('data-val');
+                sel.innerHTML = "";
+                if (currentVal && !cachedSources.includes(currentVal)) {
+                    sel.innerHTML += `<option value="${currentVal}">${currentVal}</option>`;
+                }
+                cachedSources.forEach(s => {
+                    sel.innerHTML += `<option value="${s}">${s}</option>`;
+                });
+                sel.value = currentVal;
             });
         }
 
         async function loadAutoSwitchRules() {
             const res = await fetch('/api/autoswitch');
             const data = await res.json();
+            
             const rules = JSON.parse(data.rules || "[]");
             const table = document.getElementById('rules-table');
-            // clear
             while(table.rows.length > 1) table.deleteRow(1);
             rules.forEach(r => addAutoSwitchRule(r.minKbps, r.maxKbps, r.targetScene));
+            
+            const visRules = JSON.parse(data.visibility_rules || "[]");
+            const visTable = document.getElementById('vis-rules-table');
+            while(visTable.rows.length > 1) visTable.deleteRow(1);
+            visRules.forEach(r => addVisAutoSwitchRule(r.minKbps, r.maxKbps, r.sourceName));
+            
+            updateDropdowns();
         }
 
         function addAutoSwitchRule(min=0, max=0, scene="") {
@@ -499,9 +1023,22 @@
             row.innerHTML = `
                 <td><input type="number" value="${min}" class="rmin"></td>
                 <td><input type="number" value="${max}" class="rmax"></td>
-                <td><input type="text" value="${scene}" class="rscene"></td>
+                <td><select class="rscene" data-val="${scene}"><option value="${scene}">${scene}</option></select></td>
                 <td><button class="btn-danger" onclick="this.parentElement.parentElement.remove()">X</button></td>
             `;
+            updateDropdowns();
+        }
+
+        function addVisAutoSwitchRule(min=0, max=0, source="") {
+            const table = document.getElementById('vis-rules-table');
+            const row = table.insertRow();
+            row.innerHTML = `
+                <td><input type="number" value="${min}" class="rmin"></td>
+                <td><input type="number" value="${max}" class="rmax"></td>
+                <td><select class="rsrc" data-val="${source}"><option value="${source}">${source}</option></select></td>
+                <td><button class="btn-danger" onclick="this.parentElement.parentElement.remove()">X</button></td>
+            `;
+            updateDropdowns();
         }
 
         async function saveAutoSwitchRules() {
@@ -515,9 +1052,22 @@
                 });
             });
             
+            const visRules = [];
+            document.querySelectorAll('#vis-rules-table tr').forEach((row, i) => {
+                if(i === 0) return; // skip header
+                visRules.push({
+                    minKbps: parseInt(row.querySelector('.rmin').value),
+                    maxKbps: parseInt(row.querySelector('.rmax').value),
+                    sourceName: row.querySelector('.rsrc').value
+                });
+            });
+            
             await fetch('/api/autoswitch', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({rules: JSON.stringify(rules)})
+                body: JSON.stringify({
+                    rules: JSON.stringify(rules),
+                    visibility_rules: JSON.stringify(visRules)
+                })
             });
             alert("Rules saved and reloaded!");
         }
@@ -545,7 +1095,28 @@
 
                 const statsRes = await fetch('/api/stats');
                 const stats = await statsRes.json();
-                document.getElementById('stats-pre').innerText = JSON.stringify(stats, null, 2);
+                
+                const statsContainer = document.getElementById('srtla-stats-container');
+                const statsPanel = document.getElementById('srtla-stats-panel');
+                
+                if (stats && stats.groups && stats.groups.length > 0) {
+                    statsContainer.innerHTML = '';
+                    stats.groups.forEach(g => {
+                        let connsHtml = '';
+                        g.conns.forEach(c => {
+                            connsHtml += `<div style="font-size:0.85rem; color:var(--text-muted); margin-left:10px;">• ${c.ip}:${c.port} (${(c.bytes/1024/1024).toFixed(2)} MB)</div>`;
+                        });
+                        statsContainer.innerHTML += `
+                            <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:5px; border:1px solid #333;">
+                                <div style="font-weight:bold; color:var(--accent); margin-bottom:5px;">Port ${g.listen_port} <span style="font-size:0.8rem; font-weight:normal; color:var(--text-muted);">(Encoder ${g.id})</span></div>
+                                <div style="font-size:0.9rem; margin-bottom:5px;">Total Data: ${(g.bytes/1024/1024).toFixed(2)} MB</div>
+                                ${connsHtml}
+                            </div>
+                        `;
+                    });
+                } else {
+                    statsContainer.innerHTML = '<div style="color:var(--text-muted); font-style:italic;">No active connections.</div>';
+                }
             } catch(e) {}
         }
 
@@ -557,7 +1128,169 @@
             pollReceivers();
         }
 
-        window.onload = init;
+        let cachedTargets = [];
+
+        async function pollMultistream() {
+            try {
+                const res = await fetch('/api/multistream/targets');
+                const targets = await res.json();
+                cachedTargets = targets;
+                const table = document.getElementById('multistream-table');
+                while(table.rows.length > 1) table.deleteRow(1);
+                
+                const msDashPanel = document.getElementById('multistream-dashboard-panel');
+                const msDashCont = document.getElementById('multistream-dashboard-container');
+                if(msDashCont) msDashCont.innerHTML = '';
+                let activeTargets = 0;
+
+                targets.forEach(t => {
+                    const row = table.insertRow();
+                    let statusColor = "var(--text-muted)";
+                    if (t.status_str === "Streaming") statusColor = "var(--success)";
+                    else if (t.status_str === "Reconnecting") statusColor = "var(--warning)";
+                    else if (t.status_str === "Starting" || t.status_str === "Stopping") statusColor = "var(--accent)";
+                    
+                    row.innerHTML = `
+                        <td>${t.name} ${!t.enabled ? '<span style="color:#ff4757; font-size:0.8rem;">(Disabled)</span>' : ''}</td>
+                        <td>${t.type}</td>
+                        <td style="color:${statusColor}; font-weight:bold;">${t.status_str}</td>
+                        <td>
+                            <button onclick="multistreamAction('${t.id}', 'start')" ${t.status_str !== 'Stopped' || !t.enabled ? 'disabled' : ''}>Start</button>
+                            <button class="btn-warning" onclick="multistreamAction('${t.id}', 'stop')" ${t.status_str === 'Stopped' ? 'disabled' : ''}>Stop</button>
+                            <button style="background:#555;" onclick="editTarget('${t.id}')" ${t.status_str !== 'Stopped' ? 'disabled' : ''}>Edit</button>
+                            <button class="btn-danger" onclick="deleteTarget('${t.id}')" ${t.status_str !== 'Stopped' ? 'disabled' : ''}>X</button>
+                        </td>
+                    `;
+                    
+                    if (t.status_str !== "Stopped") {
+                        activeTargets++;
+                        if(msDashCont) {
+                            let metricsHtml = '';
+                            if (t.metrics && t.status_str === "Streaming") {
+                                metricsHtml = `
+                                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">
+                                        Data: ${(t.metrics.bytes / 1024 / 1024).toFixed(2)} MB | Dropped: ${t.metrics.frames_dropped}
+                                    </div>
+                                `;
+                            }
+                            msDashCont.innerHTML += `
+                                <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:10px; border-radius:5px; border-left: 4px solid ${statusColor};">
+                                    <div>
+                                        <div style="font-weight:bold;">${t.name} <span style="font-size:0.8rem; color:var(--text-muted);">(${t.type})</span></div>
+                                        ${metricsHtml}
+                                    </div>
+                                    <div style="color:${statusColor}; font-weight:bold; font-size:0.9rem;">${t.status_str}</div>
+                                </div>
+                            `;
+                        }
+                    }
+                });
+                
+                if(msDashPanel) {
+                    if (activeTargets > 0) msDashPanel.style.display = 'block';
+                    else msDashPanel.style.display = 'none';
+                }
+            } catch(e) {}
+        }
+
+        function openTargetModal(target = null) {
+            document.getElementById('target-modal').style.display = 'flex';
+            if (target) {
+                document.getElementById('target-modal-title').innerText = "Edit Target";
+                document.getElementById('target-id').value = target.id;
+                document.getElementById('target-name').value = target.name;
+                document.getElementById('target-type').value = target.type || "RTMP";
+                document.getElementById('target-url').value = target.url;
+                document.getElementById('target-key').value = target.key;
+            } else {
+                document.getElementById('target-modal-title').innerText = "Add Target";
+                document.getElementById('target-id').value = "";
+                document.getElementById('target-name').value = "";
+                document.getElementById('target-type').value = "RTMP";
+                document.getElementById('target-url').value = "";
+                document.getElementById('target-key').value = "";
+            }
+        }
+
+        function editTarget(id) {
+            const t = cachedTargets.find(x => x.id === id);
+            if (t) openTargetModal(t);
+        }
+
+        async function saveTarget() {
+            const id = document.getElementById('target-id').value;
+            const target = {
+                id: id,
+                name: document.getElementById('target-name').value,
+                type: document.getElementById('target-type').value,
+                url: document.getElementById('target-url').value,
+                key: document.getElementById('target-key').value,
+                enabled: true
+            };
+            
+            await fetch('/api/multistream/manage', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action: id ? 'edit' : 'add', target })
+            });
+            
+            document.getElementById('target-modal').style.display = 'none';
+            pollMultistream();
+        }
+
+        async function deleteTarget(id) {
+            if (confirm("Delete this target?")) {
+                await fetch('/api/multistream/manage', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ action: 'delete', target: { id } })
+                });
+                pollMultistream();
+            }
+        }
+
+        async function multistreamAction(id, action) {
+            await fetch('/api/multistream/action', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id, action})
+            });
+            pollMultistream();
+        }
+
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/settings');
+                if (res.status === 401) {
+                    document.getElementById('login-overlay').style.display = 'flex';
+                } else if (res.status === 200) {
+                    document.getElementById('login-overlay').style.display = 'none';
+                    init();
+                } else {
+                    setTimeout(checkAuth, 2000);
+                }
+            } catch(e) {
+                setTimeout(checkAuth, 2000);
+            }
+        }
+
+        async function submitLogin() {
+            const pwd = document.getElementById('login-password').value;
+            const res = await fetch('/api/auth', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({password: pwd})
+            });
+            if (res.status === 200) {
+                checkAuth();
+            } else {
+                alert("Incorrect Password!");
+                document.getElementById('login-password').value = "";
+            }
+        }
+
+        async function logout() {
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.reload();
+        }
+
+        window.onload = checkAuth;
     </script>
 </body>
 </html>

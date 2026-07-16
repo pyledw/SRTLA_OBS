@@ -11,7 +11,8 @@
 #include <QMetaObject>
 #include <atomic>
 #include "srtla-ui.hpp"
-
+#include "multistream.hpp"
+#include <QJsonArray>
 extern "C" {
 void srtla_proxy_settings_changed();
 void srtla_get_all_receivers_json(char *out_buffer, int max_len);
@@ -25,14 +26,78 @@ static httplib::Server *svr = nullptr;
 static std::thread *server_thread = nullptr;
 static std::atomic<bool> is_running(false);
 
-static void handle_api_settings_get(const httplib::Request &, httplib::Response &res)
+static bool check_auth(const httplib::Request &req, httplib::Response &res)
 {
+	config_t *global_config = obs_frontend_get_profile_config();
+	if (!global_config) return true;
+	const char *pwd = config_get_string(global_config, "SRTLA", "WebAccessPassword");
+	if (!pwd || strlen(pwd) == 0) return true;
+
+	if (req.has_header("Cookie")) {
+		std::string cookie_str = req.get_header_value("Cookie");
+		QString qstr = QString::fromStdString(cookie_str);
+		QStringList cookies = qstr.split(';', Qt::SkipEmptyParts);
+		for (const QString &cookie : cookies) {
+			QString trimmed = cookie.trimmed();
+			if (trimmed.startsWith("auth_token=")) {
+				QString token = trimmed.mid(11);
+				if (token == QString(pwd)) return true;
+			}
+		}
+	}
+	res.status = 401;
+	res.set_content("{\"status\":\"unauthorized\"}", "application/json");
+	return false;
+}
+
+#define REQUIRE_AUTH(req, res) if (!check_auth(req, res)) return;
+
+static void handle_api_auth(const httplib::Request &req, httplib::Response &res)
+{
+	config_t *global_config = obs_frontend_get_profile_config();
+	const char *pwd = global_config ? config_get_string(global_config, "SRTLA", "WebAccessPassword") : nullptr;
+	if (!pwd || strlen(pwd) == 0) {
+		res.set_content("{\"status\":\"ok\"}", "application/json");
+		return;
+	}
+
+	QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(req.body));
+	if (doc.isObject()) {
+		QString attempt = doc.object()["password"].toString();
+		if (attempt == QString(pwd)) {
+			std::string cookie = "auth_token=" + attempt.toStdString() + "; Path=/; Max-Age=31536000; SameSite=Strict";
+			res.set_header("Set-Cookie", cookie.c_str());
+			res.set_content("{\"status\":\"ok\"}", "application/json");
+			return;
+		}
+	}
+	res.status = 401;
+	res.set_content("{\"status\":\"unauthorized\"}", "application/json");
+}
+
+static void handle_api_logout(const httplib::Request &, httplib::Response &res)
+{
+	std::string cookie = "auth_token=; Path=/; Max-Age=0; SameSite=Strict";
+	res.set_header("Set-Cookie", cookie.c_str());
+	res.set_content("{\"status\":\"ok\"}", "application/json");
+}
+
+static void handle_api_settings_get(const httplib::Request &req, httplib::Response &res)
+{
+	REQUIRE_AUTH(req, res)
 	config_t *global_config = obs_frontend_get_profile_config();
 	QJsonObject obj;
 	if (global_config) {
 		obj["proxy_enabled"] = config_get_bool(global_config, "SRTLA_Proxy", "Enabled");
 		obj["autoswitch_enabled"] = config_get_bool(global_config, "SRTLA_AutoSwitch", "Enabled");
 		obj["vis_autoswitch_enabled"] = config_get_bool(global_config, "SRTLA_AutoSwitch", "VisEnabled");
+		const char *pwd = config_get_string(global_config, "SRTLA", "WSPassword");
+		obj["ws_password"] = pwd ? QString(pwd) : "";
+		
+		const char *wpwd = config_get_string(global_config, "SRTLA", "WebAccessPassword");
+		obj["web_access_password"] = wpwd ? QString(wpwd) : "";
+		
+		obj["sync_with_obs_live"] = MultistreamManager::instance().getSyncWithObs();
 	}
 	QJsonDocument doc(obj);
 	res.set_content(doc.toJson(QJsonDocument::Compact).toStdString(), "application/json");
@@ -40,6 +105,7 @@ static void handle_api_settings_get(const httplib::Request &, httplib::Response 
 
 static void handle_api_settings_post(const httplib::Request &req, httplib::Response &res)
 {
+	REQUIRE_AUTH(req, res)
 	config_t *global_config = obs_frontend_get_profile_config();
 	if (!global_config) {
 		res.status = 500;
@@ -57,6 +123,13 @@ static void handle_api_settings_post(const httplib::Request &req, httplib::Respo
 		if (obj.contains("vis_autoswitch_enabled"))
 			config_set_bool(global_config, "SRTLA_AutoSwitch", "VisEnabled",
 					obj["vis_autoswitch_enabled"].toBool());
+		if (obj.contains("ws_password"))
+			config_set_string(global_config, "SRTLA", "WSPassword", obj["ws_password"].toString().toUtf8().constData());
+		if (obj.contains("web_access_password"))
+			config_set_string(global_config, "SRTLA", "WebAccessPassword", obj["web_access_password"].toString().toUtf8().constData());
+		
+		if (obj.contains("sync_with_obs_live"))
+			MultistreamManager::instance().setSyncWithObs(obj["sync_with_obs_live"].toBool());
 
 		config_save_safe(global_config, "tmp", nullptr);
 		srtla_proxy_settings_changed();
@@ -68,15 +141,16 @@ static void handle_api_settings_post(const httplib::Request &req, httplib::Respo
 	}
 }
 
-static void handle_api_obs_ws_config(const httplib::Request &, httplib::Response &res)
+static void handle_api_obs_ws_config(const httplib::Request &req, httplib::Response &res)
 {
-	config_t *app_config = obs_frontend_get_app_config();
+	REQUIRE_AUTH(req, res)
+	config_t *profile_config = obs_frontend_get_profile_config();
 	QJsonObject obj;
-	if (app_config) {
-		obj["ws_enabled"] = config_get_bool(app_config, "obs-websocket", "ServerEnabled");
-		const char *pwd = config_get_string(app_config, "obs-websocket", "ServerPassword");
+	if (profile_config) {
+		obj["ws_enabled"] = config_get_bool(profile_config, "OBSWebSocket", "ServerEnabled");
+		const char *pwd = config_get_string(profile_config, "OBSWebSocket", "ServerPassword");
 		obj["ws_password"] = pwd ? QString(pwd) : "";
-		obj["ws_port"] = static_cast<int>(config_get_int(app_config, "obs-websocket", "ServerPort"));
+		obj["ws_port"] = static_cast<int>(config_get_int(profile_config, "OBSWebSocket", "ServerPort"));
 	}
 	QJsonDocument doc(obj);
 	res.set_content(doc.toJson(QJsonDocument::Compact).toStdString(), "application/json");
@@ -88,8 +162,9 @@ static void handle_api_obs_ws_config(const httplib::Request &, httplib::Response
 #include <QTextStream>
 #include <QCoreApplication>
 
-static void handle_api_restart(const httplib::Request &, httplib::Response &res)
+static void handle_api_restart(const httplib::Request &req, httplib::Response &res)
 {
+	REQUIRE_AUTH(req, res)
 	res.set_content("{\"status\":\"restarting\"}", "application/json");
 	QMetaObject::invokeMethod(
 		qApp,
@@ -136,8 +211,9 @@ static void handle_api_restart(const httplib::Request &, httplib::Response &res)
 		Qt::QueuedConnection);
 }
 
-static void handle_api_stream_key_get(const httplib::Request &, httplib::Response &res)
+static void handle_api_stream_key_get(const httplib::Request &req, httplib::Response &res)
 {
+	REQUIRE_AUTH(req, res)
 	obs_service_t *service = obs_frontend_get_streaming_service();
 	QJsonObject obj;
 	obj["key"] = "";
@@ -158,6 +234,7 @@ static void handle_api_stream_key_get(const httplib::Request &, httplib::Respons
 
 static void handle_api_stream_key_post(const httplib::Request &req, httplib::Response &res)
 {
+	REQUIRE_AUTH(req, res)
 	QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(req.body));
 	if (doc.isObject()) {
 		QString newKey = doc.object()["key"].toString();
@@ -177,8 +254,9 @@ static void handle_api_stream_key_post(const httplib::Request &req, httplib::Res
 	res.status = 400;
 }
 
-static void handle_api_autoswitch_get(const httplib::Request &, httplib::Response &res)
+static void handle_api_autoswitch_get(const httplib::Request &req, httplib::Response &res)
 {
+	REQUIRE_AUTH(req, res)
 	config_t *global_config = obs_frontend_get_profile_config();
 	QJsonObject obj;
 	if (global_config) {
@@ -195,6 +273,7 @@ static void handle_api_autoswitch_get(const httplib::Request &, httplib::Respons
 
 static void handle_api_autoswitch_post(const httplib::Request &req, httplib::Response &res)
 {
+	REQUIRE_AUTH(req, res)
 	config_t *global_config = obs_frontend_get_profile_config();
 	if (!global_config) {
 		res.status = 500;
@@ -225,15 +304,17 @@ static void handle_api_autoswitch_post(const httplib::Request &req, httplib::Res
 	res.status = 400;
 }
 
-static void handle_api_receivers(const httplib::Request &, httplib::Response &res)
+static void handle_api_receivers(const httplib::Request &req, httplib::Response &res)
 {
+	REQUIRE_AUTH(req, res)
 	char buf[4096] = {0};
 	srtla_get_all_receivers_json(buf, sizeof(buf));
 	res.set_content(buf, "application/json");
 }
 
-static void handle_api_stats(const httplib::Request &, httplib::Response &res)
+static void handle_api_stats(const httplib::Request &req, httplib::Response &res)
 {
+	REQUIRE_AUTH(req, res)
 	int listen_port = 0, failed = 0;
 	char buf[4096] = {0};
 	srtla_get_connection_details(&listen_port, &failed, buf, sizeof(buf));
@@ -244,6 +325,7 @@ static void handle_api_stats(const httplib::Request &, httplib::Response &res)
 
 static void handle_api_receiver_action(const httplib::Request &req, httplib::Response &res)
 {
+	REQUIRE_AUTH(req, res)
 	QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(req.body));
 	if (doc.isObject()) {
 		QString action = doc.object()["action"].toString();
@@ -256,6 +338,83 @@ static void handle_api_receiver_action(const httplib::Request &req, httplib::Res
 			srtla_force_stop_by_name(nameBA.constData());
 		else if (action == "restart")
 			srtla_force_restart_by_name(nameBA.constData());
+
+		res.set_content("{\"status\":\"ok\"}", "application/json");
+		return;
+	}
+	res.status = 400;
+}
+
+static void handle_api_multistream_targets(const httplib::Request &req, httplib::Response &res)
+{
+	REQUIRE_AUTH(req, res)
+	QJsonArray arr;
+	auto targets = MultistreamManager::instance().getTargets();
+	for (auto t : targets) {
+		QJsonObject obj = t->getConfig().toJson();
+		int s = t->getStatus();
+		QString statusStr = "Stopped";
+		if (s == MultistreamTarget::STARTING) statusStr = "Starting";
+		else if (s == MultistreamTarget::STREAMING) statusStr = "Streaming";
+		else if (s == MultistreamTarget::STOPPING) statusStr = "Stopping";
+		else if (s == MultistreamTarget::RECONNECTING) statusStr = "Reconnecting";
+		obj["status_str"] = statusStr;
+		
+		QJsonObject metrics = t->getMetrics();
+		obj["metrics"] = metrics;
+
+		arr.append(obj);
+	}
+	QJsonDocument doc(arr);
+	res.set_content(doc.toJson(QJsonDocument::Compact).toStdString(), "application/json");
+}
+
+static void handle_api_multistream_action(const httplib::Request &req, httplib::Response &res)
+{
+	REQUIRE_AUTH(req, res)
+	QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(req.body));
+	if (doc.isObject()) {
+		QString action = doc.object()["action"].toString();
+		QString id = doc.object()["id"].toString();
+		
+		auto t = MultistreamManager::instance().getTarget(id);
+		if (t) {
+			QMetaObject::invokeMethod(
+				qApp, [id, action]() {
+					auto target = MultistreamManager::instance().getTarget(id);
+					if (target) {
+						if (action == "start") target->start();
+						else if (action == "stop") target->stop();
+					}
+				}, Qt::QueuedConnection);
+		}
+		res.set_content("{\"status\":\"ok\"}", "application/json");
+		return;
+	}
+	res.status = 400;
+}
+
+static void handle_api_multistream_manage(const httplib::Request &req, httplib::Response &res)
+{
+	REQUIRE_AUTH(req, res)
+	QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(req.body));
+	if (doc.isObject()) {
+		QString action = doc.object()["action"].toString();
+		QJsonObject payload = doc.object()["target"].toObject();
+
+		QMetaObject::invokeMethod(qApp, [action, payload]() {
+			if (action == "add") {
+				MultistreamTargetConfig cfg = MultistreamTargetConfig::fromJson(payload);
+				MultistreamManager::instance().addTarget(cfg);
+			} else if (action == "edit") {
+				QString id = payload["id"].toString();
+				MultistreamTargetConfig cfg = MultistreamTargetConfig::fromJson(payload);
+				MultistreamManager::instance().updateTarget(id, cfg);
+			} else if (action == "delete") {
+				QString id = payload["id"].toString();
+				MultistreamManager::instance().deleteTarget(id);
+			}
+		}, Qt::QueuedConnection);
 
 		res.set_content("{\"status\":\"ok\"}", "application/json");
 		return;
@@ -293,6 +452,11 @@ void srtla_web_server_start(int port)
 	svr->Get("/api/receivers", handle_api_receivers);
 	svr->Get("/api/stats", handle_api_stats);
 	svr->Post("/api/receivers/action", handle_api_receiver_action);
+	svr->Get("/api/multistream/targets", handle_api_multistream_targets);
+	svr->Post("/api/multistream/action", handle_api_multistream_action);
+	svr->Post("/api/multistream/manage", handle_api_multistream_manage);
+	svr->Post("/api/auth", handle_api_auth);
+	svr->Post("/api/logout", handle_api_logout);
 
 	is_running = true;
 	server_thread = new std::thread([port]() { svr->listen("0.0.0.0", port); });

@@ -44,6 +44,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/srtla/common.c
   src/srtla-ui.cpp
   src/srtla-web.cpp
+  src/multistream.cpp
   src/resources.qrc
 )
 

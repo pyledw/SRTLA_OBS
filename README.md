@@ -156,3 +156,16 @@ To compile the dll on your local Windows machine:
    cmake --build build_x64 --config Release
    ```
    The compiled library will output to `build_x64/Release/PyleIRL.dll`.
+
+---
+
+## 📜 Open Source Credits & Attributions
+
+This project utilizes several open-source libraries and components. We are incredibly grateful to the developers and maintainers of these projects for their work:
+
+- **[BELABOX srtla](https://github.com/BELABOX/srtla)**: A multi-link bonding transport proxy for connection aggregation. Licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](src/srtla/LICENSE).
+- **[frp (Fast Reverse Proxy)](https://github.com/fatedier/frp)**: A fast reverse proxy to help expose local servers to the internet. Licensed under the [Apache License 2.0](https://github.com/fatedier/frp/blob/dev/LICENSE).
+- **[cpp-httplib](https://github.com/yhirose/cpp-httplib)**: A C++ header-only HTTP/HTTPS server and client library by yhirose. Licensed under the [MIT License](https://github.com/yhirose/cpp-httplib/blob/master/LICENSE).
+- **[OBS Studio (libobs / obs-frontend-api)](https://github.com/obsproject/obs-studio)**: Open Broadcaster Software API. Licensed under the [GNU General Public License v2.0 (GPL-2.0)](LICENSE).
+- **[Qt Framework](https://www.qt.io/)**: Cross-platform software development framework for the UI. Licensed under [LGPLv3 / GPLv3](https://www.qt.io/licensing/).
+

@@ -7,6 +7,10 @@
 #include <QScrollArea>
 #include <QTableWidget>
 #include <QPushButton>
+#include <QTextBrowser>
+#include <QCheckBox>
+#include "multistream.hpp"
+
 #include <QDesktopServices>
 #include <QUrl>
 #include <QStandardPaths>
@@ -327,13 +331,102 @@ extern "C" void *create_srtla_dock()
 
 static void addLogoToLayout(QVBoxLayout *layout)
 {
+	layout->addSpacing(10);
+
+	QFrame *line = new QFrame();
+	line->setFrameShape(QFrame::HLine);
+	line->setFrameShadow(QFrame::Sunken);
+	line->setStyleSheet("color: #3a3a3a;");
+	layout->addWidget(line);
+
+	layout->addSpacing(5);
+
+	QHBoxLayout *bottomLayout = new QHBoxLayout();
+	bottomLayout->setAlignment(Qt::AlignCenter);
+	bottomLayout->setSpacing(8);
+
 	QLabel *logoLabel = new QLabel();
 	QPixmap pixmap(":/pyle-logo.png");
 	if (!pixmap.isNull()) {
-		logoLabel->setPixmap(pixmap.scaledToHeight(75, Qt::SmoothTransformation));
-		logoLabel->setAlignment(Qt::AlignCenter);
-		layout->insertWidget(0, logoLabel);
+		logoLabel->setPixmap(pixmap.scaledToHeight(20, Qt::SmoothTransformation));
 	}
+	bottomLayout->addWidget(logoLabel);
+
+	QLabel *textLabel = new QLabel("Built for Streamers by Streamers");
+	textLabel->setStyleSheet("font-size: 10px; color: #888888; font-style: italic;");
+	bottomLayout->addWidget(textLabel);
+
+	layout->addLayout(bottomLayout);
+}
+
+SrtlaAboutDialog::SrtlaAboutDialog(QWidget *parent) : QDialog(parent)
+{
+	setWindowTitle("About PyleIRL");
+	setMinimumSize(450, 420);
+
+	QVBoxLayout *mainLayout = new QVBoxLayout(this);
+
+	// Logo
+	QLabel *logoLabel = new QLabel();
+	QPixmap pixmap(":/pyle-logo.png");
+	if (!pixmap.isNull()) {
+		logoLabel->setPixmap(pixmap.scaledToHeight(64, Qt::SmoothTransformation));
+		logoLabel->setAlignment(Qt::AlignCenter);
+		mainLayout->addWidget(logoLabel);
+	}
+
+	// App Title & Description
+	QLabel *titleLabel = new QLabel(QString("PyleIRL OBS Plugin\nVersion %1").arg(PLUGIN_VERSION));
+	titleLabel->setAlignment(Qt::AlignCenter);
+	titleLabel->setStyleSheet("font-weight: bold; font-size: 14px;");
+	mainLayout->addWidget(titleLabel);
+
+	QLabel *descLabel = new QLabel("Developed by PyleAdventures to improve IRL livestreaming.");
+	descLabel->setAlignment(Qt::AlignCenter);
+	descLabel->setStyleSheet("color: #aaaaaa; margin-bottom: 10px;");
+	mainLayout->addWidget(descLabel);
+
+	// Attribution Header
+	QLabel *attrHeader = new QLabel("Open Source Licenses & Attributions:");
+	attrHeader->setStyleSheet("font-weight: bold; font-size: 12px;");
+	mainLayout->addWidget(attrHeader);
+
+	// Attributions text browser
+	QTextBrowser *browser = new QTextBrowser();
+	browser->setOpenExternalLinks(true);
+
+	QString html = "<h3>Attributions & Credits</h3>"
+		"<p>This plugin is built using the following open source libraries and components:</p>"
+		"<ul>"
+		"<li><b>BELABOX srtla</b><br/>"
+		"A multi-link bonding transport proxy for connection aggregation.<br/>"
+		"License: GNU Affero General Public License v3.0 (AGPL-3.0)<br/>"
+		"Repository: <a href=\"https://github.com/BELABOX/srtla\">github.com/BELABOX/srtla</a></li><br/>"
+		"<li><b>frp (Fast Reverse Proxy)</b><br/>"
+		"A fast reverse proxy to help expose local servers to the internet.<br/>"
+		"License: Apache License 2.0<br/>"
+		"Repository: <a href=\"https://github.com/fatedier/frp\">github.com/fatedier/frp</a></li><br/>"
+		"<li><b>cpp-httplib</b><br/>"
+		"A C++ header-only HTTP/HTTPS server and client library by yhirose.<br/>"
+		"License: MIT License<br/>"
+		"Repository: <a href=\"https://github.com/yhirose/cpp-httplib\">github.com/yhirose/cpp-httplib</a></li><br/>"
+		"<li><b>OBS Studio API (libobs & obs-frontend-api)</b><br/>"
+		"The core plugin API of Open Broadcaster Software.<br/>"
+		"License: GNU General Public License v2.0 (GPL-2.0)<br/>"
+		"Repository: <a href=\"https://github.com/obsproject/obs-studio\">github.com/obsproject/obs-studio</a></li><br/>"
+		"<li><b>Qt Framework</b><br/>"
+		"Cross-platform software development framework for the UI.<br/>"
+		"License: LGPLv3 / GPLv3<br/>"
+		"Website: <a href=\"https://www.qt.io/\">qt.io</a></li>"
+		"</ul>";
+
+	browser->setHtml(html);
+	mainLayout->addWidget(browser);
+
+	// OK button
+	QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok);
+	connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+	mainLayout->addWidget(buttonBox);
 }
 
 SrtlaReverseProxyDialog::SrtlaReverseProxyDialog(QWidget *parent) : QDialog(parent)
@@ -342,7 +435,6 @@ SrtlaReverseProxyDialog::SrtlaReverseProxyDialog(QWidget *parent) : QDialog(pare
 	setMinimumWidth(400);
 
 	QVBoxLayout *mainLayout = new QVBoxLayout(this);
-	addLogoToLayout(mainLayout);
 	QFormLayout *formLayout = new QFormLayout();
 
 	enableProxy = new QComboBox();
@@ -374,6 +466,7 @@ SrtlaReverseProxyDialog::SrtlaReverseProxyDialog(QWidget *parent) : QDialog(pare
 
 	QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
 	mainLayout->addWidget(buttonBox);
+	addLogoToLayout(mainLayout);
 
 	connect(buttonBox, &QDialogButtonBox::accepted, this, &SrtlaReverseProxyDialog::saveSettings);
 	connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -536,7 +629,6 @@ SrtlaAutoSwitchDialog::SrtlaAutoSwitchDialog(QWidget *parent) : QDialog(parent)
 	setMinimumWidth(600);
 
 	QVBoxLayout *mainLayout = new QVBoxLayout(this);
-	addLogoToLayout(mainLayout);
 
 	QTabWidget *tabs = new QTabWidget();
 
@@ -630,6 +722,7 @@ SrtlaAutoSwitchDialog::SrtlaAutoSwitchDialog(QWidget *parent) : QDialog(parent)
 
 	QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
 	mainLayout->addWidget(buttonBox);
+	addLogoToLayout(mainLayout);
 
 	connect(buttonBox, &QDialogButtonBox::accepted, this, &SrtlaAutoSwitchDialog::saveSettings);
 	connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -1182,15 +1275,20 @@ extern "C" void setup_srtla_menu()
 			srtla_web_server_start(webPort);
 		}
 	}
+	MultistreamManager::instance().loadConfig();
 
 	srtlaMenu->addSeparator();
 
+	QAction *multiAction = srtlaMenu->addAction("Multistream Settings...");
+	QObject::connect(multiAction, &QAction::triggered, [mainWindow]() {
+		SrtlaMultistreamDialog dialog(mainWindow);
+		dialog.exec();
+	});
+
 	QAction *aboutAction = srtlaMenu->addAction("About...");
 	QObject::connect(aboutAction, &QAction::triggered, [mainWindow]() {
-		QMessageBox::about(
-			mainWindow, "About PyleIRL",
-			QString("PyleIRL OBS Plugin\n\nVersion: %1\n\nDeveloped by PyleAdventures in order to better IRL livestreaming.")
-				.arg(PLUGIN_VERSION));
+		SrtlaAboutDialog dialog(mainWindow);
+		dialog.exec();
 	});
 
 	// Start proxy on initial load if enabled
@@ -1211,7 +1309,6 @@ SrtlaWebInterfaceDialog::SrtlaWebInterfaceDialog(QWidget *parent) : QDialog(pare
 	setMinimumWidth(400);
 
 	QVBoxLayout *mainLayout = new QVBoxLayout(this);
-	addLogoToLayout(mainLayout);
 	QFormLayout *formLayout = new QFormLayout();
 
 	enableWeb = new QComboBox();
@@ -1221,14 +1318,25 @@ SrtlaWebInterfaceDialog::SrtlaWebInterfaceDialog(QWidget *parent) : QDialog(pare
 	webPort = new QSpinBox();
 	webPort->setRange(1, 65535);
 	webPort->setValue(8080); // Default port
+	
+	accessPassword = new QLineEdit();
+	accessPassword->setPlaceholderText("Leave blank to disable");
+	accessPassword->setEchoMode(QLineEdit::Password);
+
+	wsPassword = new QLineEdit();
+	wsPassword->setPlaceholderText("OBS WebSocket Password");
+	wsPassword->setEchoMode(QLineEdit::Password);
 
 	formLayout->addRow("Enable Web Interface:", enableWeb);
 	formLayout->addRow("Web Server Port:", webPort);
+	formLayout->addRow("Web Access Password:", accessPassword);
+	formLayout->addRow("OBS WebSocket Password:", wsPassword);
 
 	mainLayout->addLayout(formLayout);
 
 	QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
 	mainLayout->addWidget(buttonBox);
+	addLogoToLayout(mainLayout);
 
 	connect(buttonBox, &QDialogButtonBox::accepted, this, &SrtlaWebInterfaceDialog::saveSettings);
 	connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -1240,6 +1348,13 @@ SrtlaWebInterfaceDialog::SrtlaWebInterfaceDialog(QWidget *parent) : QDialog(pare
 		int port = config_get_int(global_config, "SRTLA_WebInterface", "Port");
 		if (port > 0)
 			webPort->setValue(port);
+		const char *wpwd = config_get_string(global_config, "SRTLA", "WebAccessPassword");
+		if (wpwd)
+			accessPassword->setText(QString(wpwd));
+
+		const char *wspwd = config_get_string(global_config, "SRTLA", "WSPassword");
+		if (wspwd)
+			wsPassword->setText(QString(wspwd));
 	}
 }
 
@@ -1252,9 +1367,13 @@ void SrtlaWebInterfaceDialog::saveSettings()
 
 		bool currentlyEnabled = (enableWeb->currentIndex() == 1);
 		int currentPort = webPort->value();
+		QString currentPwd = accessPassword->text();
+		QString currentWsPwd = wsPassword->text();
 
 		config_set_bool(global_config, "SRTLA_WebInterface", "Enabled", currentlyEnabled);
 		config_set_int(global_config, "SRTLA_WebInterface", "Port", currentPort);
+		config_set_string(global_config, "SRTLA", "WebAccessPassword", currentPwd.toUtf8().constData());
+		config_set_string(global_config, "SRTLA", "WSPassword", currentWsPwd.toUtf8().constData());
 
 		config_save_safe(global_config, "tmp", nullptr);
 
@@ -1268,4 +1387,258 @@ void SrtlaWebInterfaceDialog::saveSettings()
 	}
 
 	accept();
+}
+
+extern "C" void *create_srtla_multistream_dock()
+{
+	return new SrtlaMultistreamDock();
+}
+
+class MultistreamTargetConfigDialog : public QDialog {
+public:
+	MultistreamTargetConfig config;
+	QLineEdit *nameEdit;
+	QComboBox *typeCombo;
+	QLineEdit *urlEdit;
+	QLineEdit *keyEdit;
+
+	MultistreamTargetConfigDialog(QWidget *parent, const MultistreamTargetConfig &initial)
+		: QDialog(parent), config(initial)
+	{
+		setWindowTitle(config.id.isEmpty() ? "Add Target" : "Edit Target");
+		setMinimumWidth(400);
+
+		QVBoxLayout *layout = new QVBoxLayout(this);
+		QFormLayout *form = new QFormLayout();
+
+		nameEdit = new QLineEdit(config.name);
+		typeCombo = new QComboBox();
+		typeCombo->addItem("RTMP");
+		typeCombo->addItem("SRT");
+		typeCombo->setCurrentText(config.type.isEmpty() ? "RTMP" : config.type);
+
+		urlEdit = new QLineEdit(config.url);
+		urlEdit->setPlaceholderText("rtmp://... or srt://...");
+		keyEdit = new QLineEdit(config.key);
+		keyEdit->setEchoMode(QLineEdit::PasswordEchoOnEdit);
+
+		form->addRow("Name:", nameEdit);
+		form->addRow("Type:", typeCombo);
+		form->addRow("URL:", urlEdit);
+		form->addRow("Stream Key:", keyEdit);
+
+		layout->addLayout(form);
+
+		QDialogButtonBox *btnBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+		layout->addWidget(btnBox);
+
+		connect(btnBox, &QDialogButtonBox::accepted, this, [this]() {
+			this->config.name = nameEdit->text();
+			this->config.type = typeCombo->currentText();
+			this->config.url = urlEdit->text();
+			this->config.key = keyEdit->text();
+			accept();
+		});
+		connect(btnBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+	}
+};
+
+SrtlaMultistreamDialog::SrtlaMultistreamDialog(QWidget *parent) : QDialog(parent)
+{
+	setWindowTitle("Multistream Settings");
+	setMinimumSize(600, 400);
+
+	QVBoxLayout *mainLayout = new QVBoxLayout(this);
+
+	syncWithObsCheck = new QCheckBox("Sync with OBS Live (Start/Stop targets when OBS starts/stops streaming)");
+	syncWithObsCheck->setChecked(MultistreamManager::instance().getSyncWithObs());
+	mainLayout->addWidget(syncWithObsCheck);
+
+	targetsTable = new QTableWidget();
+	targetsTable->setColumnCount(4);
+	targetsTable->setHorizontalHeaderLabels(QStringList() << "Name" << "Type" << "URL" << "Enabled");
+	targetsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+	targetsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+	targetsTable->setSelectionMode(QAbstractItemView::SingleSelection);
+	mainLayout->addWidget(targetsTable);
+
+	QHBoxLayout *btnLayout = new QHBoxLayout();
+	QPushButton *addBtn = new QPushButton("Add Target");
+	QPushButton *editBtn = new QPushButton("Edit Target");
+	QPushButton *delBtn = new QPushButton("Delete Target");
+
+	btnLayout->addWidget(addBtn);
+	btnLayout->addWidget(editBtn);
+	btnLayout->addWidget(delBtn);
+	btnLayout->addStretch();
+	mainLayout->addLayout(btnLayout);
+
+	QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+	mainLayout->addWidget(buttonBox);
+
+	connect(addBtn, &QPushButton::clicked, this, &SrtlaMultistreamDialog::addTarget);
+	connect(editBtn, &QPushButton::clicked, this, &SrtlaMultistreamDialog::editTarget);
+	connect(delBtn, &QPushButton::clicked, this, &SrtlaMultistreamDialog::deleteTarget);
+	connect(buttonBox, &QDialogButtonBox::accepted, this, &SrtlaMultistreamDialog::saveSettings);
+	connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+
+	reloadList();
+}
+
+void SrtlaMultistreamDialog::reloadList()
+{
+	targetsTable->setRowCount(0);
+	auto targets = MultistreamManager::instance().getTargets();
+	for (int i = 0; i < targets.size(); i++) {
+		auto cfg = targets[i]->getConfig();
+		targetsTable->insertRow(i);
+		
+		QTableWidgetItem *nameItem = new QTableWidgetItem(cfg.name);
+		nameItem->setData(Qt::UserRole, cfg.id);
+		targetsTable->setItem(i, 0, nameItem);
+		
+		targetsTable->setItem(i, 1, new QTableWidgetItem(cfg.type));
+		targetsTable->setItem(i, 2, new QTableWidgetItem(cfg.url));
+		
+		QTableWidgetItem *enabledItem = new QTableWidgetItem();
+		enabledItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
+		enabledItem->setCheckState(cfg.enabled ? Qt::Checked : Qt::Unchecked);
+		targetsTable->setItem(i, 3, enabledItem);
+	}
+}
+
+void SrtlaMultistreamDialog::addTarget()
+{
+	MultistreamTargetConfig cfg;
+	MultistreamTargetConfigDialog dlg(this, cfg);
+	if (dlg.exec() == QDialog::Accepted) {
+		MultistreamManager::instance().addTarget(dlg.config);
+		reloadList();
+	}
+}
+
+void SrtlaMultistreamDialog::editTarget()
+{
+	int row = targetsTable->currentRow();
+	if (row < 0) return;
+
+	QString id = targetsTable->item(row, 0)->data(Qt::UserRole).toString();
+	MultistreamTarget *t = MultistreamManager::instance().getTarget(id);
+	if (!t) return;
+
+	MultistreamTargetConfigDialog dlg(this, t->getConfig());
+	if (dlg.exec() == QDialog::Accepted) {
+		MultistreamManager::instance().updateTarget(id, dlg.config);
+		reloadList();
+	}
+}
+
+void SrtlaMultistreamDialog::deleteTarget()
+{
+	int row = targetsTable->currentRow();
+	if (row < 0) return;
+
+	QString id = targetsTable->item(row, 0)->data(Qt::UserRole).toString();
+	int ret = QMessageBox::question(this, "Confirm Delete", "Are you sure you want to delete this target?");
+	if (ret == QMessageBox::Yes) {
+		MultistreamManager::instance().deleteTarget(id);
+		reloadList();
+	}
+}
+
+void SrtlaMultistreamDialog::saveSettings()
+{
+	MultistreamManager::instance().setSyncWithObs(syncWithObsCheck->isChecked());
+	
+	for (int i = 0; i < targetsTable->rowCount(); i++) {
+		QString id = targetsTable->item(i, 0)->data(Qt::UserRole).toString();
+		MultistreamTarget *t = MultistreamManager::instance().getTarget(id);
+		if (t) {
+			auto cfg = t->getConfig();
+			cfg.enabled = (targetsTable->item(i, 3)->checkState() == Qt::Checked);
+			MultistreamManager::instance().updateTarget(id, cfg);
+		}
+	}
+	accept();
+}
+
+SrtlaMultistreamDock::SrtlaMultistreamDock(QWidget *parent) : QDockWidget("Multistream Status", parent)
+{
+	QWidget *central = new QWidget(this);
+	QVBoxLayout *layout = new QVBoxLayout(central);
+
+	statusTable = new QTableWidget();
+	statusTable->setColumnCount(4);
+	statusTable->setHorizontalHeaderLabels(QStringList() << "Name" << "Status" << "Start" << "Stop");
+	statusTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+	statusTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+	statusTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+	statusTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+	layout->addWidget(statusTable);
+
+	setWidget(central);
+
+	connect(&MultistreamManager::instance(), &MultistreamManager::targetsChanged, this, &SrtlaMultistreamDock::updateList);
+	connect(&MultistreamManager::instance(), &MultistreamManager::targetStatusChanged, this, &SrtlaMultistreamDock::updateList);
+
+	updateList();
+}
+
+void SrtlaMultistreamDock::updateList()
+{
+	statusTable->setRowCount(0);
+	auto targets = MultistreamManager::instance().getTargets();
+	for (int i = 0; i < targets.size(); i++) {
+		auto cfg = targets[i]->getConfig();
+		if (!cfg.enabled) continue;
+
+		statusTable->insertRow(statusTable->rowCount());
+		int row = statusTable->rowCount() - 1;
+
+		QTableWidgetItem *nameItem = new QTableWidgetItem(cfg.name);
+		statusTable->setItem(row, 0, nameItem);
+
+		QString statusStr = "Stopped";
+		auto status = targets[i]->getStatus();
+		if (status == MultistreamTarget::STARTING) statusStr = "Starting...";
+		else if (status == MultistreamTarget::STREAMING) statusStr = "Streaming";
+		else if (status == MultistreamTarget::STOPPING) statusStr = "Stopping...";
+		else if (status == MultistreamTarget::RECONNECTING) statusStr = "Reconnecting...";
+
+		QTableWidgetItem *statusItem = new QTableWidgetItem(statusStr);
+		statusTable->setItem(row, 1, statusItem);
+
+		QPushButton *startBtn = new QPushButton("Start");
+		startBtn->setProperty("targetId", cfg.id);
+		connect(startBtn, &QPushButton::clicked, this, &SrtlaMultistreamDock::startTarget);
+		statusTable->setCellWidget(row, 2, startBtn);
+
+		QPushButton *stopBtn = new QPushButton("Stop");
+		stopBtn->setProperty("targetId", cfg.id);
+		connect(stopBtn, &QPushButton::clicked, this, &SrtlaMultistreamDock::stopTarget);
+		statusTable->setCellWidget(row, 3, stopBtn);
+
+		startBtn->setEnabled(status == MultistreamTarget::STOPPED);
+		stopBtn->setEnabled(status != MultistreamTarget::STOPPED);
+	}
+}
+
+void SrtlaMultistreamDock::startTarget()
+{
+	QPushButton *btn = qobject_cast<QPushButton*>(sender());
+	if (btn) {
+		QString id = btn->property("targetId").toString();
+		auto t = MultistreamManager::instance().getTarget(id);
+		if (t) t->start();
+	}
+}
+
+void SrtlaMultistreamDock::stopTarget()
+{
+	QPushButton *btn = qobject_cast<QPushButton*>(sender());
+	if (btn) {
+		QString id = btn->property("targetId").toString();
+		auto t = MultistreamManager::instance().getTarget(id);
+		if (t) t->stop();
+	}
 }

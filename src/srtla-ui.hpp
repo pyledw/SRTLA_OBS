@@ -151,4 +151,50 @@ private slots:
 private:
 	QComboBox *enableWeb;
 	QSpinBox *webPort;
+	class QLineEdit *accessPassword;
+	class QLineEdit *wsPassword;
 };
+
+class SrtlaAboutDialog : public QDialog {
+	Q_OBJECT
+
+public:
+	SrtlaAboutDialog(QWidget *parent = nullptr);
+};
+
+class QCheckBox;
+
+class SrtlaMultistreamDialog : public QDialog {
+	Q_OBJECT
+
+public:
+	SrtlaMultistreamDialog(QWidget *parent = nullptr);
+
+private slots:
+	void saveSettings();
+	void addTarget();
+	void editTarget();
+	void deleteTarget();
+	void reloadList();
+
+private:
+	QCheckBox *syncWithObsCheck;
+	class QTableWidget *targetsTable;
+};
+
+class SrtlaMultistreamDock : public QDockWidget {
+	Q_OBJECT
+
+public:
+	SrtlaMultistreamDock(QWidget *parent = nullptr);
+
+private slots:
+	void updateList();
+	void startTarget();
+	void stopTarget();
+
+private:
+	class QTableWidget *statusTable;
+};
+
+
