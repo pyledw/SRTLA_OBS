@@ -101,6 +101,9 @@ static void handle_api_settings_get(const httplib::Request &req, httplib::Respon
 		const char *wpwd = config_get_string(global_config, "SRTLA", "WebAccessPassword");
 		obj["web_access_password"] = wpwd ? QString(wpwd) : "";
 
+		const char *wsurl = config_get_string(global_config, "SRTLA", "WSUrl");
+		obj["ws_url_override"] = wsurl ? QString(wsurl) : "";
+
 		obj["sync_with_obs_live"] = MultistreamManager::instance().getSyncWithObs();
 	}
 	QJsonDocument doc(obj);
@@ -133,6 +136,10 @@ static void handle_api_settings_post(const httplib::Request &req, httplib::Respo
 		if (obj.contains("web_access_password"))
 			config_set_string(global_config, "SRTLA", "WebAccessPassword",
 					  obj["web_access_password"].toString().toUtf8().constData());
+					  
+		if (obj.contains("ws_url_override"))
+			config_set_string(global_config, "SRTLA", "WSUrl",
+					  obj["ws_url_override"].toString().toUtf8().constData());
 
 		if (obj.contains("sync_with_obs_live"))
 			MultistreamManager::instance().setSyncWithObs(obj["sync_with_obs_live"].toBool());

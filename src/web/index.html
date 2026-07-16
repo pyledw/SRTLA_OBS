@@ -187,6 +187,7 @@
                         <span id="obs-stream-text" style="font-weight:bold;">OFFLINE</span>
                         <button id="obs-stream-btn" onclick="toggleOBSStream()" style="padding:5px 15px; font-weight:bold;"></button>
                     </div>
+                    <button class="btn-danger" id="ws-disconnect-btn" onclick="disconnectOBS()" style="display:none;">Disconnect WS</button>
                     <button class="btn-warning" onclick="restartOBS()">Restart OBS</button>
                 </div>
             </div>
@@ -285,6 +286,13 @@
                     <input type="checkbox" id="setting-vis-autoswitch">
                     <span class="slider"></span>
                 </label>
+            </div>
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start; border-bottom:none;">
+                <label style="margin-bottom:5px;">OBS WebSocket URL Override (For remote access)</label>
+                <div class="input-group" style="width:100%;">
+                    <input type="text" id="setting-ws-url-override" placeholder="wss://your-domain.com">
+                </div>
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-top:5px;">If left blank, the frontend will connect using the local OBS WebSocket port.</div>
             </div>
             <div class="setting-row">
                 <span>Web Interface Session</span>
@@ -488,6 +496,7 @@
 
         let ws = null;
         let wsConnectionAttempts = 0;
+        let manualDisconnect = false;
         let previewInterval = null;
         let statsInterval = null;
         let currentScene = "";
@@ -511,6 +520,7 @@
                 document.getElementById('setting-vis-autoswitch').checked = data.vis_autoswitch_enabled;
                 document.getElementById('setting-multistream-sync').checked = data.sync_with_obs_live;
                 document.getElementById('ws-password').value = data.ws_password || savedPwd || "";
+                if (data.ws_url_override) document.getElementById('setting-ws-url-override').value = data.ws_url_override;
             } catch(e) { console.error(e); }
 
             // 2. Get OBS WS Config & auto connect
@@ -520,8 +530,9 @@
                 
                 let savedUrl = localStorage.getItem('wsUrl');
                 let savedPwd = localStorage.getItem('wsPassword');
+                let overrideUrl = data.ws_url_override;
                 
-                document.getElementById('ws-url').value = savedUrl || (conf.ws_port ? `ws://localhost:${conf.ws_port}` : 'ws://localhost:4455');
+                document.getElementById('ws-url').value = overrideUrl || savedUrl || (conf.ws_port ? `ws://localhost:${conf.ws_port}` : 'ws://localhost:4455');
                 document.getElementById('ws-password').value = data.ws_password || savedPwd || "";
 
                 if (document.getElementById('ws-password').value) {
@@ -598,6 +609,7 @@
                     document.getElementById('ws-status-indicator').className = "status connected";
                     document.getElementById('ws-status-text').innerText = "Connected";
                     document.getElementById('ws-auth-section').style.display = 'none';
+                    document.getElementById('ws-disconnect-btn').style.display = 'block';
                     document.getElementById('preview-panel').style.display = 'block';
                     document.getElementById('scenes-panel').style.display = 'block';
                     sendRequest("GetSceneList");
@@ -757,6 +769,15 @@
                     return;
                 }
                 
+                if (manualDisconnect) {
+                    document.getElementById('ws-status-indicator').className = "status disconnected";
+                    document.getElementById('ws-status-text').innerText = "Disconnected manually. Enter URL to reconnect.";
+                    document.getElementById('ws-auth-section').style.display = 'flex';
+                    document.getElementById('ws-disconnect-btn').style.display = 'none';
+                    manualDisconnect = false;
+                    return;
+                }
+                
                 if(previewInterval) clearInterval(previewInterval);
                 
                 if (!isRestarting) {
@@ -788,6 +809,13 @@
             ws.onerror = (e) => {
                 console.error("WebSocket error:", e);
             };
+        }
+
+        function disconnectOBS() {
+            if (ws) {
+                manualDisconnect = true;
+                ws.close();
+            }
         }
 
         function sendRequest(requestType, requestData = {}) {
@@ -994,7 +1022,8 @@
                     proxy_enabled: document.getElementById('setting-proxy').checked,
                     autoswitch_enabled: document.getElementById('setting-autoswitch').checked,
                     vis_autoswitch_enabled: document.getElementById('setting-vis-autoswitch').checked,
-                    sync_with_obs_live: document.getElementById('setting-multistream-sync').checked
+                    sync_with_obs_live: document.getElementById('setting-multistream-sync').checked,
+                    ws_url_override: document.getElementById('setting-ws-url-override').value
                 })
             });
         }
