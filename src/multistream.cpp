@@ -5,7 +5,8 @@
 #include <util/config-file.h>
 #include <util/bmem.h>
 
-QJsonObject MultistreamTargetConfig::toJson() const {
+QJsonObject MultistreamTargetConfig::toJson() const
+{
 	QJsonObject obj;
 	obj["id"] = id;
 	obj["name"] = name;
@@ -16,7 +17,8 @@ QJsonObject MultistreamTargetConfig::toJson() const {
 	return obj;
 }
 
-MultistreamTargetConfig MultistreamTargetConfig::fromJson(const QJsonObject &obj) {
+MultistreamTargetConfig MultistreamTargetConfig::fromJson(const QJsonObject &obj)
+{
 	MultistreamTargetConfig c;
 	c.id = obj["id"].toString();
 	c.name = obj["name"].toString();
@@ -31,7 +33,8 @@ MultistreamTargetConfig MultistreamTargetConfig::fromJson(const QJsonObject &obj
 }
 
 MultistreamTarget::MultistreamTarget(const MultistreamTargetConfig &config, QObject *parent)
-	: QObject(parent), config(config)
+	: QObject(parent),
+	  config(config)
 {
 }
 
@@ -42,7 +45,8 @@ MultistreamTarget::~MultistreamTarget()
 
 void MultistreamTarget::initOutput()
 {
-	if (output) return;
+	if (output)
+		return;
 
 	obs_data_t *settings = obs_data_create();
 	obs_data_t *service_settings = nullptr;
@@ -73,7 +77,8 @@ void MultistreamTarget::initOutput()
 	}
 
 	obs_data_release(settings);
-	if (service_settings) obs_data_release(service_settings);
+	if (service_settings)
+		obs_data_release(service_settings);
 
 	if (output) {
 		signal_handler_t *sh = obs_output_get_signal_handler(output);
@@ -109,10 +114,12 @@ void MultistreamTarget::cleanupOutput()
 
 bool MultistreamTarget::cloneEncoders()
 {
-	if (!output) return false;
+	if (!output)
+		return false;
 
 	obs_output_t *main_output = obs_frontend_get_streaming_output();
-	if (!main_output) return false;
+	if (!main_output)
+		return false;
 
 	obs_encoder_t *video_enc = obs_output_get_video_encoder(main_output);
 	if (video_enc) {
@@ -150,7 +157,8 @@ QJsonObject MultistreamTarget::getMetrics() const
 
 void MultistreamTarget::start()
 {
-	if (status != STOPPED) return;
+	if (status != STOPPED)
+		return;
 
 	initOutput();
 	if (!cloneEncoders()) {
@@ -244,7 +252,8 @@ MultistreamManager::~MultistreamManager()
 void MultistreamManager::loadConfig()
 {
 	config_t *global_config = obs_frontend_get_profile_config();
-	if (!global_config) return;
+	if (!global_config)
+		return;
 
 	syncWithObs = config_get_bool(global_config, "SRTLA_Multistream", "SyncWithObs");
 
@@ -261,7 +270,8 @@ void MultistreamManager::loadConfig()
 			for (int i = 0; i < arr.size(); i++) {
 				MultistreamTargetConfig cfg = MultistreamTargetConfig::fromJson(arr[i].toObject());
 				MultistreamTarget *target = new MultistreamTarget(cfg, this);
-				connect(target, &MultistreamTarget::statusChanged, this, &MultistreamManager::targetStatusChanged);
+				connect(target, &MultistreamTarget::statusChanged, this,
+					&MultistreamManager::targetStatusChanged);
 				targets.append(target);
 			}
 			emit targetsChanged();
@@ -272,7 +282,8 @@ void MultistreamManager::loadConfig()
 void MultistreamManager::saveConfig()
 {
 	config_t *global_config = obs_frontend_get_profile_config();
-	if (!global_config) return;
+	if (!global_config)
+		return;
 
 	config_set_bool(global_config, "SRTLA_Multistream", "SyncWithObs", syncWithObs);
 
@@ -281,7 +292,8 @@ void MultistreamManager::saveConfig()
 		arr.append(t->getConfig().toJson());
 	}
 	QJsonDocument doc(arr);
-	config_set_string(global_config, "SRTLA_Multistream", "Targets", doc.toJson(QJsonDocument::Compact).constData());
+	config_set_string(global_config, "SRTLA_Multistream", "Targets",
+			  doc.toJson(QJsonDocument::Compact).constData());
 
 	config_save_safe(global_config, "tmp", nullptr);
 }
@@ -295,7 +307,8 @@ void MultistreamManager::setSyncWithObs(bool sync)
 MultistreamTarget *MultistreamManager::getTarget(const QString &id) const
 {
 	for (auto t : targets) {
-		if (t->getConfig().id == id) return t;
+		if (t->getConfig().id == id)
+			return t;
 	}
 	return nullptr;
 }

@@ -37,15 +37,17 @@ if(ENABLE_QT)
   )
 endif()
 
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE 
-  src/plugin-main.c
-  src/srtla-source.c
-  src/srtla/srtla_rec.c
-  src/srtla/common.c
-  src/srtla-ui.cpp
-  src/srtla-web.cpp
-  src/multistream.cpp
-  src/resources.qrc
+target_sources(
+  ${CMAKE_PROJECT_NAME}
+  PRIVATE
+    src/plugin-main.c
+    src/srtla-source.c
+    src/srtla/srtla_rec.c
+    src/srtla/common.c
+    src/srtla-ui.cpp
+    src/srtla-web.cpp
+    src/multistream.cpp
+    src/resources.qrc
 )
 
 if(WIN32)
@@ -67,10 +69,7 @@ else()
   set(FRPC_BIN "frpc")
 endif()
 
-FetchContent_Declare(
-  frp
-  URL ${FRPC_URL}
-)
+FetchContent_Declare(frp URL ${FRPC_URL})
 FetchContent_MakeAvailable(frp)
 
 if(APPLE)

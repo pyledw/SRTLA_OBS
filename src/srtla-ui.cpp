@@ -395,7 +395,8 @@ SrtlaAboutDialog::SrtlaAboutDialog(QWidget *parent) : QDialog(parent)
 	QTextBrowser *browser = new QTextBrowser();
 	browser->setOpenExternalLinks(true);
 
-	QString html = "<h3>Attributions & Credits</h3>"
+	QString html =
+		"<h3>Attributions & Credits</h3>"
 		"<p>This plugin is built using the following open source libraries and components:</p>"
 		"<ul>"
 		"<li><b>BELABOX srtla</b><br/>"
@@ -1318,7 +1319,7 @@ SrtlaWebInterfaceDialog::SrtlaWebInterfaceDialog(QWidget *parent) : QDialog(pare
 	webPort = new QSpinBox();
 	webPort->setRange(1, 65535);
 	webPort->setValue(8080); // Default port
-	
+
 	accessPassword = new QLineEdit();
 	accessPassword->setPlaceholderText("Leave blank to disable");
 	accessPassword->setEchoMode(QLineEdit::Password);
@@ -1403,7 +1404,8 @@ public:
 	QLineEdit *keyEdit;
 
 	MultistreamTargetConfigDialog(QWidget *parent, const MultistreamTargetConfig &initial)
-		: QDialog(parent), config(initial)
+		: QDialog(parent),
+		  config(initial)
 	{
 		setWindowTitle(config.id.isEmpty() ? "Add Target" : "Edit Target");
 		setMinimumWidth(400);
@@ -1492,14 +1494,14 @@ void SrtlaMultistreamDialog::reloadList()
 	for (int i = 0; i < targets.size(); i++) {
 		auto cfg = targets[i]->getConfig();
 		targetsTable->insertRow(i);
-		
+
 		QTableWidgetItem *nameItem = new QTableWidgetItem(cfg.name);
 		nameItem->setData(Qt::UserRole, cfg.id);
 		targetsTable->setItem(i, 0, nameItem);
-		
+
 		targetsTable->setItem(i, 1, new QTableWidgetItem(cfg.type));
 		targetsTable->setItem(i, 2, new QTableWidgetItem(cfg.url));
-		
+
 		QTableWidgetItem *enabledItem = new QTableWidgetItem();
 		enabledItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
 		enabledItem->setCheckState(cfg.enabled ? Qt::Checked : Qt::Unchecked);
@@ -1520,11 +1522,13 @@ void SrtlaMultistreamDialog::addTarget()
 void SrtlaMultistreamDialog::editTarget()
 {
 	int row = targetsTable->currentRow();
-	if (row < 0) return;
+	if (row < 0)
+		return;
 
 	QString id = targetsTable->item(row, 0)->data(Qt::UserRole).toString();
 	MultistreamTarget *t = MultistreamManager::instance().getTarget(id);
-	if (!t) return;
+	if (!t)
+		return;
 
 	MultistreamTargetConfigDialog dlg(this, t->getConfig());
 	if (dlg.exec() == QDialog::Accepted) {
@@ -1536,7 +1540,8 @@ void SrtlaMultistreamDialog::editTarget()
 void SrtlaMultistreamDialog::deleteTarget()
 {
 	int row = targetsTable->currentRow();
-	if (row < 0) return;
+	if (row < 0)
+		return;
 
 	QString id = targetsTable->item(row, 0)->data(Qt::UserRole).toString();
 	int ret = QMessageBox::question(this, "Confirm Delete", "Are you sure you want to delete this target?");
@@ -1549,7 +1554,7 @@ void SrtlaMultistreamDialog::deleteTarget()
 void SrtlaMultistreamDialog::saveSettings()
 {
 	MultistreamManager::instance().setSyncWithObs(syncWithObsCheck->isChecked());
-	
+
 	for (int i = 0; i < targetsTable->rowCount(); i++) {
 		QString id = targetsTable->item(i, 0)->data(Qt::UserRole).toString();
 		MultistreamTarget *t = MultistreamManager::instance().getTarget(id);
@@ -1578,8 +1583,10 @@ SrtlaMultistreamDock::SrtlaMultistreamDock(QWidget *parent) : QDockWidget("Multi
 
 	setWidget(central);
 
-	connect(&MultistreamManager::instance(), &MultistreamManager::targetsChanged, this, &SrtlaMultistreamDock::updateList);
-	connect(&MultistreamManager::instance(), &MultistreamManager::targetStatusChanged, this, &SrtlaMultistreamDock::updateList);
+	connect(&MultistreamManager::instance(), &MultistreamManager::targetsChanged, this,
+		&SrtlaMultistreamDock::updateList);
+	connect(&MultistreamManager::instance(), &MultistreamManager::targetStatusChanged, this,
+		&SrtlaMultistreamDock::updateList);
 
 	updateList();
 }
@@ -1590,7 +1597,8 @@ void SrtlaMultistreamDock::updateList()
 	auto targets = MultistreamManager::instance().getTargets();
 	for (int i = 0; i < targets.size(); i++) {
 		auto cfg = targets[i]->getConfig();
-		if (!cfg.enabled) continue;
+		if (!cfg.enabled)
+			continue;
 
 		statusTable->insertRow(statusTable->rowCount());
 		int row = statusTable->rowCount() - 1;
@@ -1600,10 +1608,14 @@ void SrtlaMultistreamDock::updateList()
 
 		QString statusStr = "Stopped";
 		auto status = targets[i]->getStatus();
-		if (status == MultistreamTarget::STARTING) statusStr = "Starting...";
-		else if (status == MultistreamTarget::STREAMING) statusStr = "Streaming";
-		else if (status == MultistreamTarget::STOPPING) statusStr = "Stopping...";
-		else if (status == MultistreamTarget::RECONNECTING) statusStr = "Reconnecting...";
+		if (status == MultistreamTarget::STARTING)
+			statusStr = "Starting...";
+		else if (status == MultistreamTarget::STREAMING)
+			statusStr = "Streaming";
+		else if (status == MultistreamTarget::STOPPING)
+			statusStr = "Stopping...";
+		else if (status == MultistreamTarget::RECONNECTING)
+			statusStr = "Reconnecting...";
 
 		QTableWidgetItem *statusItem = new QTableWidgetItem(statusStr);
 		statusTable->setItem(row, 1, statusItem);
@@ -1625,20 +1637,22 @@ void SrtlaMultistreamDock::updateList()
 
 void SrtlaMultistreamDock::startTarget()
 {
-	QPushButton *btn = qobject_cast<QPushButton*>(sender());
+	QPushButton *btn = qobject_cast<QPushButton *>(sender());
 	if (btn) {
 		QString id = btn->property("targetId").toString();
 		auto t = MultistreamManager::instance().getTarget(id);
-		if (t) t->start();
+		if (t)
+			t->start();
 	}
 }
 
 void SrtlaMultistreamDock::stopTarget()
 {
-	QPushButton *btn = qobject_cast<QPushButton*>(sender());
+	QPushButton *btn = qobject_cast<QPushButton *>(sender());
 	if (btn) {
 		QString id = btn->property("targetId").toString();
 		auto t = MultistreamManager::instance().getTarget(id);
-		if (t) t->stop();
+		if (t)
+			t->stop();
 	}
 }

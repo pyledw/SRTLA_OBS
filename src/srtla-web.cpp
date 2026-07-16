@@ -29,9 +29,11 @@ static std::atomic<bool> is_running(false);
 static bool check_auth(const httplib::Request &req, httplib::Response &res)
 {
 	config_t *global_config = obs_frontend_get_profile_config();
-	if (!global_config) return true;
+	if (!global_config)
+		return true;
 	const char *pwd = config_get_string(global_config, "SRTLA", "WebAccessPassword");
-	if (!pwd || strlen(pwd) == 0) return true;
+	if (!pwd || strlen(pwd) == 0)
+		return true;
 
 	if (req.has_header("Cookie")) {
 		std::string cookie_str = req.get_header_value("Cookie");
@@ -41,7 +43,8 @@ static bool check_auth(const httplib::Request &req, httplib::Response &res)
 			QString trimmed = cookie.trimmed();
 			if (trimmed.startsWith("auth_token=")) {
 				QString token = trimmed.mid(11);
-				if (token == QString(pwd)) return true;
+				if (token == QString(pwd))
+					return true;
 			}
 		}
 	}
@@ -65,7 +68,8 @@ static void handle_api_auth(const httplib::Request &req, httplib::Response &res)
 	if (doc.isObject()) {
 		QString attempt = doc.object()["password"].toString();
 		if (attempt == QString(pwd)) {
-			std::string cookie = "auth_token=" + attempt.toStdString() + "; Path=/; Max-Age=31536000; SameSite=Strict";
+			std::string cookie =
+				"auth_token=" + attempt.toStdString() + "; Path=/; Max-Age=31536000; SameSite=Strict";
 			res.set_header("Set-Cookie", cookie.c_str());
 			res.set_content("{\"status\":\"ok\"}", "application/json");
 			return;
@@ -93,10 +97,10 @@ static void handle_api_settings_get(const httplib::Request &req, httplib::Respon
 		obj["vis_autoswitch_enabled"] = config_get_bool(global_config, "SRTLA_AutoSwitch", "VisEnabled");
 		const char *pwd = config_get_string(global_config, "SRTLA", "WSPassword");
 		obj["ws_password"] = pwd ? QString(pwd) : "";
-		
+
 		const char *wpwd = config_get_string(global_config, "SRTLA", "WebAccessPassword");
 		obj["web_access_password"] = wpwd ? QString(wpwd) : "";
-		
+
 		obj["sync_with_obs_live"] = MultistreamManager::instance().getSyncWithObs();
 	}
 	QJsonDocument doc(obj);
@@ -124,10 +128,12 @@ static void handle_api_settings_post(const httplib::Request &req, httplib::Respo
 			config_set_bool(global_config, "SRTLA_AutoSwitch", "VisEnabled",
 					obj["vis_autoswitch_enabled"].toBool());
 		if (obj.contains("ws_password"))
-			config_set_string(global_config, "SRTLA", "WSPassword", obj["ws_password"].toString().toUtf8().constData());
+			config_set_string(global_config, "SRTLA", "WSPassword",
+					  obj["ws_password"].toString().toUtf8().constData());
 		if (obj.contains("web_access_password"))
-			config_set_string(global_config, "SRTLA", "WebAccessPassword", obj["web_access_password"].toString().toUtf8().constData());
-		
+			config_set_string(global_config, "SRTLA", "WebAccessPassword",
+					  obj["web_access_password"].toString().toUtf8().constData());
+
 		if (obj.contains("sync_with_obs_live"))
 			MultistreamManager::instance().setSyncWithObs(obj["sync_with_obs_live"].toBool());
 
@@ -354,12 +360,16 @@ static void handle_api_multistream_targets(const httplib::Request &req, httplib:
 		QJsonObject obj = t->getConfig().toJson();
 		int s = t->getStatus();
 		QString statusStr = "Stopped";
-		if (s == MultistreamTarget::STARTING) statusStr = "Starting";
-		else if (s == MultistreamTarget::STREAMING) statusStr = "Streaming";
-		else if (s == MultistreamTarget::STOPPING) statusStr = "Stopping";
-		else if (s == MultistreamTarget::RECONNECTING) statusStr = "Reconnecting";
+		if (s == MultistreamTarget::STARTING)
+			statusStr = "Starting";
+		else if (s == MultistreamTarget::STREAMING)
+			statusStr = "Streaming";
+		else if (s == MultistreamTarget::STOPPING)
+			statusStr = "Stopping";
+		else if (s == MultistreamTarget::RECONNECTING)
+			statusStr = "Reconnecting";
 		obj["status_str"] = statusStr;
-		
+
 		QJsonObject metrics = t->getMetrics();
 		obj["metrics"] = metrics;
 
@@ -376,17 +386,21 @@ static void handle_api_multistream_action(const httplib::Request &req, httplib::
 	if (doc.isObject()) {
 		QString action = doc.object()["action"].toString();
 		QString id = doc.object()["id"].toString();
-		
+
 		auto t = MultistreamManager::instance().getTarget(id);
 		if (t) {
 			QMetaObject::invokeMethod(
-				qApp, [id, action]() {
+				qApp,
+				[id, action]() {
 					auto target = MultistreamManager::instance().getTarget(id);
 					if (target) {
-						if (action == "start") target->start();
-						else if (action == "stop") target->stop();
+						if (action == "start")
+							target->start();
+						else if (action == "stop")
+							target->stop();
 					}
-				}, Qt::QueuedConnection);
+				},
+				Qt::QueuedConnection);
 		}
 		res.set_content("{\"status\":\"ok\"}", "application/json");
 		return;
@@ -402,19 +416,22 @@ static void handle_api_multistream_manage(const httplib::Request &req, httplib::
 		QString action = doc.object()["action"].toString();
 		QJsonObject payload = doc.object()["target"].toObject();
 
-		QMetaObject::invokeMethod(qApp, [action, payload]() {
-			if (action == "add") {
-				MultistreamTargetConfig cfg = MultistreamTargetConfig::fromJson(payload);
-				MultistreamManager::instance().addTarget(cfg);
-			} else if (action == "edit") {
-				QString id = payload["id"].toString();
-				MultistreamTargetConfig cfg = MultistreamTargetConfig::fromJson(payload);
-				MultistreamManager::instance().updateTarget(id, cfg);
-			} else if (action == "delete") {
-				QString id = payload["id"].toString();
-				MultistreamManager::instance().deleteTarget(id);
-			}
-		}, Qt::QueuedConnection);
+		QMetaObject::invokeMethod(
+			qApp,
+			[action, payload]() {
+				if (action == "add") {
+					MultistreamTargetConfig cfg = MultistreamTargetConfig::fromJson(payload);
+					MultistreamManager::instance().addTarget(cfg);
+				} else if (action == "edit") {
+					QString id = payload["id"].toString();
+					MultistreamTargetConfig cfg = MultistreamTargetConfig::fromJson(payload);
+					MultistreamManager::instance().updateTarget(id, cfg);
+				} else if (action == "delete") {
+					QString id = payload["id"].toString();
+					MultistreamManager::instance().deleteTarget(id);
+				}
+			},
+			Qt::QueuedConnection);
 
 		res.set_content("{\"status\":\"ok\"}", "application/json");
 		return;

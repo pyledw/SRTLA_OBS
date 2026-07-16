@@ -196,5 +196,3 @@ private slots:
 private:
 	class QTableWidget *statusTable;
 };
-
-
