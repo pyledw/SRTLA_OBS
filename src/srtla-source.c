@@ -195,6 +195,8 @@ static void srtla_source_update(void *data, obs_data_t *settings)
 
 			if (media_restart_needed) {
 				if (context->media_source) {
+					if (obs_source_active(context->source)) obs_source_dec_active(context->media_source);
+					if (obs_source_showing(context->source)) obs_source_dec_showing(context->media_source);
 					obs_source_release(context->media_source);
 					context->media_source = NULL;
 				}
@@ -219,7 +221,8 @@ static void srtla_source_update(void *data, obs_data_t *settings)
 
 				if (context->media_source) {
 					obs_source_set_audio_mixers(context->media_source, 0xFF);
-					obs_source_add_active_child(context->source, context->media_source);
+					if (obs_source_active(context->source)) obs_source_inc_active(context->media_source);
+					if (obs_source_showing(context->source)) obs_source_inc_showing(context->media_source);
 				} else {
 					obs_log(LOG_ERROR, "[SRTLA] Failed to create internal ffmpeg_source");
 				}
@@ -258,6 +261,30 @@ static uint32_t srtla_source_get_height(void *data)
 	return context->media_source ? obs_source_get_base_height(context->media_source) : 0;
 }
 
+static void srtla_source_activate(void *data)
+{
+	struct srtla_source *context = data;
+	if (context->media_source) obs_source_inc_active(context->media_source);
+}
+
+static void srtla_source_deactivate(void *data)
+{
+	struct srtla_source *context = data;
+	if (context->media_source) obs_source_dec_active(context->media_source);
+}
+
+static void srtla_source_show(void *data)
+{
+	struct srtla_source *context = data;
+	if (context->media_source) obs_source_inc_showing(context->media_source);
+}
+
+static void srtla_source_hide(void *data)
+{
+	struct srtla_source *context = data;
+	if (context->media_source) obs_source_dec_showing(context->media_source);
+}
+
 static obs_properties_t *srtla_source_get_properties(void *data)
 {
 	UNUSED_PARAMETER(data);
@@ -288,6 +315,10 @@ struct obs_source_info srtla_source_info = {
 	.update = srtla_source_update,
 	.get_properties = srtla_source_get_properties,
 	.get_defaults = srtla_source_get_defaults,
+	.activate = srtla_source_activate,
+	.deactivate = srtla_source_deactivate,
+	.show = srtla_source_show,
+	.hide = srtla_source_hide,
 	.video_render = srtla_source_video_render,
 	.get_width = srtla_source_get_width,
 	.get_height = srtla_source_get_height,
