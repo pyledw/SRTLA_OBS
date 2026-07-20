@@ -1120,6 +1120,9 @@ int srtla_rec_main(const char *listen_ip, int srtla_port, const char *srt_host, 
     srtla_sock = -1;
     return -1;
   }
+
+  int optval = 1;
+  setsockopt(srtla_sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&optval, sizeof(optval));
   
 #ifdef _WIN32
   #ifndef IP_UNICAST_IF
@@ -1336,5 +1339,29 @@ void srtla_get_connection_details(int *listen_port, int *failed_conns, char* out
         pthread_mutex_unlock(&global_ctx_mutex);
         snprintf(out_buffer + offset, max_len - offset, "]}");
     }
+}
+
+uint64_t srtla_get_total_bytes(int listen_port) {
+    uint64_t total = 0;
+    pthread_mutex_lock(&global_ctx_mutex);
+    for (int i = 0; i < MAX_SRTLA_INSTANCES; i++) {
+        srtla_ctx_t *ctx = global_contexts[i];
+        if (ctx && ctx->_listen_port == listen_port) {
+#ifdef _WIN32
+            __try {
+#endif
+                conn_group_t *g = ctx->_groups;
+                while (g) {
+                    total += g->bytes_received;
+                    g = g->next;
+                }
+#ifdef _WIN32
+            } __except(EXCEPTION_EXECUTE_HANDLER) {}
+#endif
+            break;
+        }
+    }
+    pthread_mutex_unlock(&global_ctx_mutex);
+    return total;
 }
 

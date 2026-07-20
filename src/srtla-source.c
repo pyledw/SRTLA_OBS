@@ -213,10 +213,11 @@ static void srtla_source_update(void *data, obs_data_t *settings)
 				char source_name[256];
 				snprintf(source_name, sizeof(source_name), "SRTLA_Internal_%d", context->listen_port);
 				context->media_source =
-					obs_source_create("ffmpeg_source", source_name, media_settings, NULL);
+					obs_source_create_private("ffmpeg_source", source_name, media_settings);
 				obs_data_release(media_settings);
 
 				if (context->media_source) {
+					obs_source_set_audio_mixers(context->media_source, 0xFF);
 					obs_source_add_active_child(context->source, context->media_source);
 				} else {
 					obs_log(LOG_ERROR, "[SRTLA] Failed to create internal ffmpeg_source");
@@ -279,7 +280,7 @@ static void srtla_source_get_defaults(obs_data_t *settings)
 struct obs_source_info srtla_source_info = {
 	.id = "srtla_source",
 	.type = OBS_SOURCE_TYPE_INPUT,
-	.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_AUDIO | OBS_SOURCE_ASYNC | OBS_SOURCE_CUSTOM_DRAW,
+	.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_AUDIO | OBS_SOURCE_ASYNC | OBS_SOURCE_CUSTOM_DRAW | OBS_SOURCE_COMPOSITE,
 	.get_name = srtla_source_get_name,
 	.create = srtla_source_create,
 	.destroy = srtla_source_destroy,
@@ -465,4 +466,16 @@ void srtla_force_restart_by_name(const char *name)
 		srtla_force_stop(target);
 		srtla_force_start(target);
 	}
+}
+
+void srtla_populate_receivers_list(obs_property_t *p) {
+	obs_property_list_clear(p);
+	pthread_mutex_lock(&sources_mutex);
+	for (struct srtla_source *s = sources_head; s; s = s->next) {
+		const char *name = obs_source_get_name(s->source);
+		char port_str[32];
+		snprintf(port_str, sizeof(port_str), "%d", s->listen_port);
+		obs_property_list_add_string(p, name ? name : "Unknown", port_str);
+	}
+	pthread_mutex_unlock(&sources_mutex);
 }

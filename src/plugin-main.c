@@ -52,10 +52,13 @@ static void frontend_event_cb(enum obs_frontend_event event, void *private_data)
 	}
 }
 
+extern struct obs_source_info srtla_stats_filter_info;
+
 bool obs_module_load(void)
 {
 	obs_log(LOG_INFO, "plugin loaded successfully (version %s)", PLUGIN_VERSION);
 	obs_register_source(&srtla_source_info);
+	obs_register_source(&srtla_stats_filter_info);
 	obs_frontend_add_event_callback(frontend_event_cb, NULL);
 	return true;
 }
