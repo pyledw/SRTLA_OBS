@@ -17,6 +17,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 */
 
 #include <obs-module.h>
+#include <obs-version.h>
 #include <plugin-support.h>
 #include <obs-frontend-api.h>
 
@@ -54,11 +55,25 @@ static void frontend_event_cb(enum obs_frontend_event event, void *private_data)
 
 extern struct obs_source_info srtla_stats_filter_info;
 
+static void register_source_compat(struct obs_source_info *info)
+{
+	uint32_t host_version = obs_get_version();
+	size_t info_size = sizeof(struct obs_source_info);
+
+	if (host_version < MAKE_SEMANTIC_VERSION(31, 0, 0) && info_size > 408) {
+		info_size = 408;
+	} else if (host_version < MAKE_SEMANTIC_VERSION(30, 0, 0) && info_size > 368) {
+		info_size = 368;
+	}
+
+	obs_register_source_s(info, info_size);
+}
+
 bool obs_module_load(void)
 {
 	obs_log(LOG_INFO, "plugin loaded successfully (version %s)", PLUGIN_VERSION);
-	obs_register_source(&srtla_source_info);
-	obs_register_source(&srtla_stats_filter_info);
+	register_source_compat(&srtla_source_info);
+	register_source_compat(&srtla_stats_filter_info);
 	obs_frontend_add_event_callback(frontend_event_cb, NULL);
 	return true;
 }
