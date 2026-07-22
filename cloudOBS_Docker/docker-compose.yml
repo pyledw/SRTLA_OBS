@@ -45,7 +45,10 @@ services:
             
         # Fetch the download URL of the latest release bypassing API rate limits
         TAG=$$(curl -sI https://github.com/pyledw/PyleIRL/releases/latest | grep -i '^location:' | sed 's/.*\///' | tr -d '\r' | tr -d '\n')
-        DOWNLOAD_URL="https://github.com/pyledw/PyleIRL/releases/download/$${TAG}/PyleIRL-$${TAG}-x86_64-ubuntu-gnu.tar.xz"
+        
+        # Look up the actual filename from the release page to avoid version number mismatch issues
+        DOWNLOAD_PATH=$$(curl -sL https://github.com/pyledw/PyleIRL/releases/expanded_assets/$$TAG | grep -o 'href="[^"]*ubuntu[^"]*\.tar\.xz"' | head -n 1 | cut -d '"' -f 2)
+        DOWNLOAD_URL="https://github.com$$DOWNLOAD_PATH"
         
         echo -e "\n\e[1;35m=====================================================================\e[0m"
         echo -e "\e[1;35m FOUND LATEST VERSION: $$TAG\e[0m"
