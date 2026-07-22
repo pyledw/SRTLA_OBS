@@ -3,7 +3,11 @@
         "obs-studio": {
             "version": "30.2.3",
             "baseUrl": "https://github.com/obsproject/obs-studio/archive/refs/tags",
-            "label": "OBS sources"
+            "label": "OBS sources",
+            "hashes": {
+                "macos": "a75de0a777013ae5edca526e21b584176bf21606d4d5db23ba4b5a87cfde12e3",
+                "windows-x64": "a75de0a777013ae5edca526e21b584176bf21606d4d5db23ba4b5a87cfde12e3"
+            }
         },
         "prebuilt": {
             "version": "2025-07-11",
