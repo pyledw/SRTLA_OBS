@@ -106,6 +106,73 @@ services:
         
         rm -rf /tmp/pyleirl
 
+        # Install obs-advanced-masks plugin
+        echo -e "\n\e[1;35m=====================================================================\e[0m"
+        echo -e "\e[1;35m Downloading and installing obs-advanced-masks...\e[0m"
+        echo -e "\e[1;35m=====================================================================\e[0m\n"
+        
+        MASK_URL=$$(python3 -c "import urllib.request, json; data=json.loads(urllib.request.urlopen('https://api.github.com/repos/FiniteSingularity/obs-advanced-masks/releases/latest').read()); urls=[a['browser_download_url'] for a in data['assets'] if 'ubuntu' in a['name'].lower()]; print(urls[0] if urls else '')")
+        
+        rm -rf /config/.config/obs-studio/plugins/obs-advanced-masks/
+        mkdir -p /tmp/advanced-masks
+        
+        if [ -n "$$MASK_URL" ]; then
+            wget -O /tmp/advanced-masks/plugin.zip "$$MASK_URL"
+        fi
+        
+        if [ -s "/tmp/advanced-masks/plugin.zip" ]; then
+            python3 -m zipfile -e /tmp/advanced-masks/plugin.zip /tmp/advanced-masks/
+            MASK_TAR=$$(ls /tmp/advanced-masks/*.tar.gz 2>/dev/null | head -n 1)
+            if [ -n "$$MASK_TAR" ]; then
+                tar -xf "$$MASK_TAR" -C /tmp/advanced-masks/
+                
+                mkdir -p /config/.config/obs-studio/plugins/obs-advanced-masks/bin/64bit
+                mkdir -p /config/.config/obs-studio/plugins/obs-advanced-masks/data
+                
+                cp -f /tmp/advanced-masks/obs-advanced-masks/bin/64bit/*.so /config/.config/obs-studio/plugins/obs-advanced-masks/bin/64bit/ 2>/dev/null || true
+                cp -r /tmp/advanced-masks/obs-advanced-masks/data/* /config/.config/obs-studio/plugins/obs-advanced-masks/data/ 2>/dev/null || true
+                
+                echo -e "\e[1;32m obs-advanced-masks installation complete!\e[0m"
+            else
+                echo -e "\e[1;31m ERROR: Could not find tar.gz inside the zip!\e[0m"
+            fi
+        else
+            echo -e "\e[1;31m ERROR: Failed to download obs-advanced-masks plugin!\e[0m"
+        fi
+        
+        rm -rf /tmp/advanced-masks
+
+        # Install obs-shaderfilter plugin
+        SHADER_TAG=$$(curl -sI https://github.com/exeldro/obs-shaderfilter/releases/latest | grep -i '^location:' | sed 's/.*\///' | tr -d '\r' | tr -d '\n')
+        SHADER_DOWNLOAD_URL="https://github.com/exeldro/obs-shaderfilter/releases/download/$${SHADER_TAG}/obs-shaderfilter-$${SHADER_TAG}-ubuntu-22.04.tar.gz"
+        
+        echo -e "\n\e[1;35m=====================================================================\e[0m"
+        echo -e "\e[1;35m Downloading and installing obs-shaderfilter...\e[0m"
+        echo -e "\e[1;35m=====================================================================\e[0m\n"
+        
+        rm -rf /config/.config/obs-studio/plugins/obs-shaderfilter/
+        mkdir -p /tmp/shaderfilter
+        
+        if [ -n "$$SHADER_DOWNLOAD_URL" ] && [ "$$SHADER_DOWNLOAD_URL" != "null" ]; then
+            wget -O /tmp/shaderfilter/plugin.tar.gz "$$SHADER_DOWNLOAD_URL"
+        fi
+        
+        if [ -s "/tmp/shaderfilter/plugin.tar.gz" ]; then
+            tar -xf /tmp/shaderfilter/plugin.tar.gz -C /tmp/shaderfilter/
+            
+            mkdir -p /config/.config/obs-studio/plugins/obs-shaderfilter/bin/64bit
+            mkdir -p /config/.config/obs-studio/plugins/obs-shaderfilter/data
+            
+            cp -f /tmp/shaderfilter/obs-shaderfilter/bin/64bit/*.so /config/.config/obs-studio/plugins/obs-shaderfilter/bin/64bit/ 2>/dev/null || true
+            cp -r /tmp/shaderfilter/obs-shaderfilter/data/* /config/.config/obs-studio/plugins/obs-shaderfilter/data/ 2>/dev/null || true
+            
+            echo -e "\e[1;32m obs-shaderfilter installation complete!\e[0m"
+        else
+            echo -e "\e[1;31m ERROR: Failed to download obs-shaderfilter plugin!\e[0m"
+        fi
+        
+        rm -rf /tmp/shaderfilter
+
         # Generate and force PyleDefault Profile and Scene Collection
         echo -e "\e[1;36m Generating PyleDefault optimized 1080p profile and scenes...\e[0m"
         cat << 'PYLE_DEFAULT' > /config/setup-pyle-defaults.py
