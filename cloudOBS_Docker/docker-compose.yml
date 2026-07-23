@@ -18,221 +18,183 @@ services:
               cat << 'EOF' > /usr/local/bin/install-obs.sh
               #!/bin/bash
 
-              # Capture all output and errors directly to a log file on the desktop
+              # Setup detailed log file and status helper functions
+              LOG_FILE="/config/Desktop/install.log"
               mkdir -p /config/Desktop
-              exec > >(tee -a /config/Desktop/install-error.log) 2>&1
+              echo "=== Installation Started $$(date) ===" > "$$LOG_FILE"
+
+              run_step() {
+                  local step_name="$$1"
+                  local cmd="$$2"
+                  
+                  echo -ne "\e[1;33m[ ] $$step_name...\e[0m"
+                  echo -e "\n--- START STEP: $$step_name ---" >> "$$LOG_FILE"
+                  if eval "$$cmd" >> "$$LOG_FILE" 2>&1; then
+                      echo -e "\r\e[1;32m[OK]\e[0m $$step_name"
+                      echo -e "--- STEP SUCCESS ---\n" >> "$$LOG_FILE"
+                      return 0
+                  else
+                      echo -e "\r\e[1;31m[FAIL]\e[0m $$step_name"
+                      echo -e "--- STEP FAILED ---\n" >> "$$LOG_FILE"
+                      echo -e "\e[1;31mERROR details for '$$step_name':\e[0m"
+                      tail -n 20 "$$LOG_FILE" | sed 's/^/  /'
+                      echo ""
+                      return 1
+                  fi
+              }
+
+              run_step_optional() {
+                  local step_name="$$1"
+                  local cmd="$$2"
+                  
+                  echo -ne "\e[1;33m[ ] $$step_name (Optional)...\e[0m"
+                  echo -e "\n--- START OPTIONAL STEP: $$step_name ---" >> "$$LOG_FILE"
+                  if eval "$$cmd" >> "$$LOG_FILE" 2>&1; then
+                      echo -e "\r\e[1;32m[OK]\e[0m $$step_name"
+                      echo -e "--- STEP SUCCESS ---\n" >> "$$LOG_FILE"
+                      return 0
+                  else
+                      echo -e "\r\e[1;33m[SKIP]\e[0m $$step_name"
+                      echo -e "--- STEP FAILED (OPTIONAL) ---\n" >> "$$LOG_FILE"
+                      return 0
+                  fi
+              }
+
+              echo -e "\e[1;32m=====================================================================\e[0m"
+              echo -e "\e[1;32m WELCOME TO CLOUD OBS (UBUNTU EDITION)!\e[0m"
+              echo -e "\e[1;32m Installing OBS Studio, Plugins, and Tools...\e[0m"
+              echo -e "\e[1;32m Detailed log available at: /config/Desktop/install.log\e[0m"
+              echo -e "\e[1;32m=====================================================================\e[0m"
+              echo ""
 
               if ! command -v obs >/dev/null 2>&1; then
-                  echo -e "\e[1;32m=====================================================================\e[0m"
-                  echo -e "\e[1;32m WELCOME TO CLOUD OBS (UBUNTU EDITION)!\e[0m"
-                  echo -e "\e[1;32m We are installing the LATEST OBS Studio 31+ and building the PyleIRL Plugin now.\e[0m"
-                  echo -e "\e[1;32m Please wait 3-5 minutes. Do not close this window.\e[0m"
-                  echo -e "\e[1;32m=====================================================================\e[0m"
-                  echo ""
+                  run_step "Updating package sources and adding OBS PPA" "sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends software-properties-common && sudo add-apt-repository -y ppa:obsproject/obs-studio"
+                  run_step "Installing OBS Studio and dependencies" "sudo apt-get install -y -qq --no-install-recommends obs-studio wget xz-utils ca-certificates curl jq adwaita-icon-theme python3"
+                  run_step_optional "Installing Qt visual compatibility packages" "sudo apt-get install -y -qq --no-install-recommends libqt5svg5 qt5-image-formats-plugins libqt6svg6 qt6-svg-plugins libqt6quickvectorimage6"
                   
-                  sudo apt-get update -qq >/dev/null 2>&1
-                  
-                  # Install prerequisites for adding external repositories
-                  sudo apt-get install -y -qq --no-install-recommends software-properties-common >/dev/null 2>&1
-                  
-                  # Add the official OBS Studio PPA to get the absolute newest version!
-                  sudo add-apt-repository -y ppa:obsproject/obs-studio >/dev/null 2>&1
-                  sudo apt-get install -y -qq --no-install-recommends obs-studio wget xz-utils ca-certificates curl jq adwaita-icon-theme python3 >/dev/null 2>&1
-                  
-                  sudo apt-get install -y -qq --no-install-recommends libqt5svg5 qt5-image-formats-plugins >/dev/null 2>&1 || true
-                  sudo apt-get install -y -qq --no-install-recommends libqt6svg6 qt6-svg-plugins libqt6quickvectorimage6 >/dev/null 2>&1 || true
-                  
-                  # AGGRESSIVE FIX: The Yami theme SVG checkboxes are fundamentally broken in KasmVNC/XFCE.
-                  # We aggressively strip the QCheckBox CSS rules from the Yami theme file itself!
-                  # This forces Qt to fallback to the 100% reliable native OS checkbox drawing.
-                  python3 -c "import os, re; [open(os.path.join(r, f), 'w', encoding='utf-8').write(re.sub(r'(QCheckBox|QRadioButton)::[a-zA-Z0-9_-]+(:[a-zA-Z0-9_-]+)*\s*\{[^}]*\}', '', open(os.path.join(r, f), 'r', encoding='utf-8').read())) for r, d, files in os.walk('/usr/share/obs/obs-studio/themes') for f in files if f.endswith('.qss')]"
-
-                  
+                  # Write small Python helper to avoid escaping inside double-quotes
+                  printf '%s\n' \
+                      'import os, re' \
+                      'for r, d, files in os.walk("/usr/share/obs/obs-studio/themes"):' \
+                      '    for f in files:' \
+                      '        if f.endswith(".qss"):' \
+                      '            path = os.path.join(r, f)' \
+                      '            try:' \
+                      '                with open(path, "r", encoding="utf-8") as file:' \
+                      '                    text = file.read()' \
+                      '                new_text = re.sub(r"(QCheckBox|QRadioButton)::[a-zA-Z0-9_-]+(:[a-zA-Z0-9_-]+)*\s*\{[^}]*\}", "", text)' \
+                      '                with open(path, "w", encoding="utf-8") as file:' \
+                      '                    file.write(new_text)' \
+                      '            except Exception:' \
+                      '                pass' > /tmp/fix-themes.py
+                  run_step "Fixing OBS theme rendering styles" "python3 /tmp/fix-themes.py && rm -f /tmp/fix-themes.py"
               fi
                   
               # Fetch the download URL of the latest release bypassing API rate limits
               TAG=$$(curl -sI https://github.com/pyledw/PyleIRL/releases/latest | grep -i '^location:' | sed 's/.*\///' | tr -d '\r' | tr -d '\n')
-
-              # Look up the actual filename from the release page to avoid version number mismatch issues
-              DOWNLOAD_PATH=$$(curl -sL https://github.com/pyledw/PyleIRL/releases/expanded_assets/$$TAG | grep -o 'href="[^"]*ubuntu[^"]*\.tar\.xz"' | head -n 1 | cut -d '"' -f 2)
-              DOWNLOAD_URL="https://github.com$$DOWNLOAD_PATH"
-
-              echo -e "\n\e[1;35m=====================================================================\e[0m"
-              echo -e "\e[1;35m FOUND LATEST VERSION: $$TAG\e[0m"
-              echo -e "\e[1;35m Downloading and installing version $$TAG now...\e[0m"
-              echo -e "\e[1;35m=====================================================================\e[0m\n"
-
-              # Kill OBS before unpacking so the .so file isn't locked by the OS!
-              killall -9 obs 2>/dev/null || true
-
-              # Force OBS WebSocket to be enabled using Python for flawless INI parsing
-              mkdir -p /config/.config/obs-studio
-              touch /config/.config/obs-studio/global.ini
-              python3 -c "import re; f=open('/config/.config/obs-studio/global.ini', 'r'); text=f.read(); f.close(); text = re.sub(r'\[OBSWebSocket\].*?(?=\n\[|$)', '', text, flags=re.DOTALL); text = text.strip() + '\n\n[OBSWebSocket]\nServerEnabled=true\nServerPort=4455\nServerPassword=Abc123@@\n'; f=open('/config/.config/obs-studio/global.ini', 'w'); f.write(text); f.close()"
-
-
-              # Delete the old plugin files to ensure a clean install
-              rm -rf /config/.config/obs-studio/plugins/PyleIRL/
-
-              mkdir -p /tmp/pyleirl
-
-              if [ -n "$$DOWNLOAD_URL" ] && [ "$$DOWNLOAD_URL" != "null" ]; then
-                  wget -q -O /tmp/pyleirl/plugin.tar.xz "$$DOWNLOAD_URL"
+              if [ -z "$$TAG" ] || [ "$$TAG" = "latest" ] || [ "$$TAG" = "null" ]; then
+                  TAG=$$(curl -s https://api.github.com/repos/pyledw/PyleIRL/releases/latest | jq -r .tag_name 2>/dev/null)
+              fi
+              if [ -z "$$TAG" ] || [ "$$TAG" = "null" ]; then
+                  TAG="3.2.0"
               fi
 
-              if [ -s "/tmp/pyleirl/plugin.tar.xz" ]; then
+              DOWNLOAD_PATH=$$(curl -sL https://github.com/pyledw/PyleIRL/releases/expanded_assets/$$TAG | grep -o 'href="[^"]*ubuntu[^"]*\.tar\.xz"' | head -n 1 | cut -d '"' -f 2)
+              if [ -n "$$DOWNLOAD_PATH" ] && [ "$$DOWNLOAD_PATH" != "https://github.com" ]; then
+                  DOWNLOAD_URL="https://github.com$$DOWNLOAD_PATH"
+              else
+                  DOWNLOAD_URL="https://github.com/pyledw/PyleIRL/releases/download/$${TAG}/PyleIRL-$${TAG}-ubuntu-x64.tar.xz"
+              fi
+
+              # Write PyleIRL config helper script
+              printf '%s\n' \
+                  'import os, re' \
+                  'ini_path = "/config/.config/obs-studio/global.ini"' \
+                  'os.makedirs(os.path.dirname(ini_path), exist_ok=True)' \
+                  'text = ""' \
+                  'if os.path.exists(ini_path):' \
+                  '    with open(ini_path, "r", encoding="utf-8") as f:' \
+                  '        text = f.read()' \
+                  'text = re.sub(r"\[OBSWebSocket\].*?(?=\n\[|$)", "", text, flags=re.DOTALL)' \
+                  'text = text.strip() + "\n\n[OBSWebSocket]\nServerEnabled=true\nServerPort=4455\nServerPassword=Abc123@@\n"' \
+                  'with open(ini_path, "w", encoding="utf-8") as f:' \
+                  '    f.write(text)' > /tmp/setup-obs-websocket.py
+
+              run_step "Installing PyleIRL plugin ($$TAG)" '
+                  killall -9 obs 2>/dev/null || true
+                  python3 /tmp/setup-obs-websocket.py && rm -f /tmp/setup-obs-websocket.py
+                  rm -rf /config/.config/obs-studio/plugins/PyleIRL/
+                  mkdir -p /tmp/pyleirl
+                  wget -q -O /tmp/pyleirl/plugin.tar.xz "$$DOWNLOAD_URL"
                   tar -xf /tmp/pyleirl/plugin.tar.xz -C /tmp/pyleirl/
-                  
                   mkdir -p /config/.config/obs-studio/plugins/PyleIRL/bin/64bit
                   mkdir -p /config/.config/obs-studio/plugins/PyleIRL/data
-                  
                   find /tmp/pyleirl -name "*.so" -exec cp -f {} /config/.config/obs-studio/plugins/PyleIRL/bin/64bit/ \;
-                  
-                  # Copy translation/data files if they exist in the extracted folder
                   if [ -d "/tmp/pyleirl/share/obs/obs-plugins/PyleIRL" ]; then
                       cp -r /tmp/pyleirl/share/obs/obs-plugins/PyleIRL/* /config/.config/obs-studio/plugins/PyleIRL/data/ 2>/dev/null || true
                   elif [ -d "/tmp/pyleirl/data" ]; then
                       cp -r /tmp/pyleirl/data/* /config/.config/obs-studio/plugins/PyleIRL/data/ 2>/dev/null || true
                   fi
-                  
-                  echo -e "\n\e[1;32m=====================================================================\e[0m"
-                  echo -e "\e[1;32m INSTALLATION COMPLETE! Launching OBS Studio...\e[0m"
-                  echo -e "\e[1;32m=====================================================================\e[0m"
-                  sleep 3
-              else
-                  echo -e "\n\e[1;31m=====================================================================\e[0m"
-                  echo -e "\e[1;31m ERROR: Failed to download plugin release! Check URL.\e[0m"
-                  echo -e "\e[1;31m=====================================================================\e[0m"
-                  sleep 15
-              fi
+                  rm -rf /tmp/pyleirl
+              '
 
-              rm -rf /tmp/pyleirl
-
-              # Install obs-advanced-masks plugin
-              echo -e "\n\e[1;35m=====================================================================\e[0m"
-              echo -e "\e[1;35m Downloading and installing obs-advanced-masks...\e[0m"
-              echo -e "\e[1;35m=====================================================================\e[0m\n"
-
-              MASK_TAG=$$(curl -sI https://github.com/FiniteSingularity/obs-advanced-masks/releases/latest | grep -i '^location:' | sed 's/.*\///' | tr -d '\r' | tr -d '\n')
-              MASK_PATH=$$(curl -sL https://github.com/FiniteSingularity/obs-advanced-masks/releases/expanded_assets/$$MASK_TAG | grep -o 'href="[^"]*ubuntu[^"]*\.zip"' | head -n 1 | cut -d '"' -f 2)
-              MASK_URL="https://github.com$$MASK_PATH"
-
-              rm -rf /config/.config/obs-studio/plugins/obs-advanced-masks/
-              mkdir -p /tmp/advanced-masks
-
-              if [ -n "$$MASK_URL" ] && [ "$$MASK_URL" != "https://github.com" ]; then
+              run_step "Installing obs-advanced-masks plugin" '
+                  MASK_TAG=$$(curl -sI https://github.com/FiniteSingularity/obs-advanced-masks/releases/latest | grep -i "^location:" | sed "s/.*\///" | tr -d "\r" | tr -d "\n")
+                  MASK_PATH=$$(curl -sL https://github.com/FiniteSingularity/obs-advanced-masks/releases/expanded_assets/$$MASK_TAG | grep -o "href=\"[^\"]*ubuntu[^\"]*\.zip\"" | head -n 1 | cut -d "\"" -f 2)
+                  MASK_URL="https://github.com$$MASK_PATH"
+                  rm -rf /config/.config/obs-studio/plugins/obs-advanced-masks/
+                  mkdir -p /tmp/advanced-masks
                   wget -q -O /tmp/advanced-masks/plugin.zip "$$MASK_URL"
-              fi
-
-              if [ -s "/tmp/advanced-masks/plugin.zip" ]; then
                   python3 -m zipfile -e /tmp/advanced-masks/plugin.zip /tmp/advanced-masks/
                   MASK_TAR=$$(ls /tmp/advanced-masks/*.tar.gz 2>/dev/null | head -n 1)
-                  if [ -n "$$MASK_TAR" ]; then
-                      tar -xf "$$MASK_TAR" -C /tmp/advanced-masks/
-                      
-                      mkdir -p /config/.config/obs-studio/plugins/obs-advanced-masks/bin/64bit
-                      mkdir -p /config/.config/obs-studio/plugins/obs-advanced-masks/data
-                      
-                      cp -f /tmp/advanced-masks/obs-advanced-masks/bin/64bit/*.so /config/.config/obs-studio/plugins/obs-advanced-masks/bin/64bit/ 2>/dev/null || true
-                      cp -r /tmp/advanced-masks/obs-advanced-masks/data/* /config/.config/obs-studio/plugins/obs-advanced-masks/data/ 2>/dev/null || true
-                      
-                      echo -e "\e[1;32m obs-advanced-masks installation complete!\e[0m"
-                  else
-                      echo -e "\e[1;31m ERROR: Could not find tar.gz inside the zip!\e[0m"
-                  fi
-              else
-                  echo -e "\e[1;31m ERROR: Failed to download obs-advanced-masks plugin!\e[0m"
-              fi
+                  tar -xf "$$MASK_TAR" -C /tmp/advanced-masks/
+                  mkdir -p /config/.config/obs-studio/plugins/obs-advanced-masks/bin/64bit
+                  mkdir -p /config/.config/obs-studio/plugins/obs-advanced-masks/data
+                  cp -f /tmp/advanced-masks/obs-advanced-masks/bin/64bit/*.so /config/.config/obs-studio/plugins/obs-advanced-masks/bin/64bit/ 2>/dev/null || true
+                  cp -r /tmp/advanced-masks/obs-advanced-masks/data/* /config/.config/obs-studio/plugins/obs-advanced-masks/data/ 2>/dev/null || true
+                  rm -rf /tmp/advanced-masks
+              '
 
-              rm -rf /tmp/advanced-masks
-
-              # Install obs-shaderfilter plugin
-              SHADER_TAG=$$(curl -sI https://github.com/exeldro/obs-shaderfilter/releases/latest | grep -i '^location:' | sed 's/.*\///' | tr -d '\r' | tr -d '\n')
-              SHADER_DOWNLOAD_URL="https://github.com/exeldro/obs-shaderfilter/releases/download/$${SHADER_TAG}/obs-shaderfilter-$${SHADER_TAG}-ubuntu-22.04.tar.gz"
-
-              echo -e "\n\e[1;35m=====================================================================\e[0m"
-              echo -e "\e[1;35m Downloading and installing obs-shaderfilter...\e[0m"
-              echo -e "\e[1;35m=====================================================================\e[0m\n"
-
-              rm -rf /config/.config/obs-studio/plugins/obs-shaderfilter/
-              mkdir -p /tmp/shaderfilter
-
-              if [ -n "$$SHADER_DOWNLOAD_URL" ] && [ "$$SHADER_DOWNLOAD_URL" != "null" ]; then
+              run_step "Installing obs-shaderfilter plugin" '
+                  SHADER_TAG=$$(curl -sI https://github.com/exeldro/obs-shaderfilter/releases/latest | grep -i "^location:" | sed "s/.*\///" | tr -d "\r" | tr -d "\n")
+                  SHADER_DOWNLOAD_URL="https://github.com/exeldro/obs-shaderfilter/releases/download/$${SHADER_TAG}/obs-shaderfilter-$${SHADER_TAG}-ubuntu-22.04.tar.gz"
+                  rm -rf /config/.config/obs-studio/plugins/obs-shaderfilter/
+                  mkdir -p /tmp/shaderfilter
                   wget -q -O /tmp/shaderfilter/plugin.tar.gz "$$SHADER_DOWNLOAD_URL"
-              fi
-
-              if [ -s "/tmp/shaderfilter/plugin.tar.gz" ]; then
                   tar -xf /tmp/shaderfilter/plugin.tar.gz -C /tmp/shaderfilter/
-                  
                   mkdir -p /config/.config/obs-studio/plugins/obs-shaderfilter/bin/64bit
                   mkdir -p /config/.config/obs-studio/plugins/obs-shaderfilter/data
-                  
                   cp -f /tmp/shaderfilter/obs-shaderfilter/bin/64bit/*.so /config/.config/obs-studio/plugins/obs-shaderfilter/bin/64bit/ 2>/dev/null || true
                   cp -r /tmp/shaderfilter/obs-shaderfilter/data/* /config/.config/obs-studio/plugins/obs-shaderfilter/data/ 2>/dev/null || true
-                  
-                  echo -e "\e[1;32m obs-shaderfilter installation complete!\e[0m"
-              else
-                  echo -e "\e[1;31m ERROR: Failed to download obs-shaderfilter plugin!\e[0m"
-              fi
+                  rm -rf /tmp/shaderfilter
+              '
 
-              rm -rf /tmp/shaderfilter
-
-
-
-              # Install Aitum Stream Suite plugin
-              echo -e "\n\e[1;35m=====================================================================\e[0m"
-              echo -e "\e[1;35m Downloading and installing Aitum Stream Suite...\e[0m"
-              echo -e "\e[1;35m=====================================================================\e[0m\n"
-
-              AITUM_TAG=$$(curl -sI https://github.com/Aitum/obs-aitum-stream-suite/releases/latest | grep -i '^location:' | sed 's/.*\///' | tr -d '\r' | tr -d '\n')
-              AITUM_URL="https://github.com/Aitum/obs-aitum-stream-suite/releases/download/$${AITUM_TAG}/aitum-stream-suite-linux-gnu.deb"
-
-              if [ -n "$$AITUM_URL" ]; then
+              run_step_optional "Installing Aitum Stream Suite (Optional)" '
+                  AITUM_TAG=$$(curl -sI https://github.com/Aitum/obs-aitum-stream-suite/releases/latest | grep -i "^location:" | sed "s/.*\///" | tr -d "\r" | tr -d "\n")
+                  AITUM_URL="https://github.com/Aitum/obs-aitum-stream-suite/releases/download/$${AITUM_TAG}/aitum-stream-suite-linux-gnu.deb"
                   wget -q -O /tmp/aitum-plugin.deb "$$AITUM_URL"
-                  if [ -s "/tmp/aitum-plugin.deb" ]; then
-                      # Extract the plugin locally to bypass apt/dpkg dependency mismatches and avoid breaking the system state
-                      mkdir -p /tmp/aitum_extract
-                      dpkg-deb -x /tmp/aitum-plugin.deb /tmp/aitum_extract
-                      
-                      mkdir -p /config/.config/obs-studio/plugins-disabled/aitum-stream-suite/bin/64bit
-                      mkdir -p /config/.config/obs-studio/plugins-disabled/aitum-stream-suite/data
-                      
-                      find /tmp/aitum_extract -name "*.so" -exec cp -f {} /config/.config/obs-studio/plugins-disabled/aitum-stream-suite/bin/64bit/ \;
-                      
-                      if [ -d "/tmp/aitum_extract/usr/share/obs/obs-plugins/aitum-stream-suite" ]; then
-                          cp -r /tmp/aitum_extract/usr/share/obs/obs-plugins/aitum-stream-suite/* /config/.config/obs-studio/plugins-disabled/aitum-stream-suite/data/ 2>/dev/null || true
-                      elif [ -d "/tmp/aitum_extract/usr/lib/obs-plugins/aitum-stream-suite/data" ]; then
-                          cp -r /tmp/aitum_extract/usr/lib/obs-plugins/aitum-stream-suite/data/* /config/.config/obs-studio/plugins-disabled/aitum-stream-suite/data/ 2>/dev/null || true
-                      fi
-                      
-                      echo -e "\e[1;32m Aitum Stream Suite installed (Disabled by default in plugins-disabled/)\e[0m"
-                  else
-                      echo -e "\e[1;31m ERROR: Failed to download Aitum plugin!\e[0m"
+                  mkdir -p /tmp/aitum_extract
+                  dpkg-deb -x /tmp/aitum-plugin.deb /tmp/aitum_extract
+                  mkdir -p /config/.config/obs-studio/plugins-disabled/aitum-stream-suite/bin/64bit
+                  mkdir -p /config/.config/obs-studio/plugins-disabled/aitum-stream-suite/data
+                  find /tmp/aitum_extract -name "*.so" -exec cp -f {} /config/.config/obs-studio/plugins-disabled/aitum-stream-suite/bin/64bit/ \;
+                  if [ -d "/tmp/aitum_extract/usr/share/obs/obs-plugins/aitum-stream-suite" ]; then
+                      cp -r /tmp/aitum_extract/usr/share/obs/obs-plugins/aitum-stream-suite/* /config/.config/obs-studio/plugins-disabled/aitum-stream-suite/data/ 2>/dev/null || true
+                  elif [ -d "/tmp/aitum_extract/usr/lib/obs-plugins/aitum-stream-suite/data" ]; then
+                      cp -r /tmp/aitum_extract/usr/lib/obs-plugins/aitum-stream-suite/data/* /config/.config/obs-studio/plugins-disabled/aitum-stream-suite/data/ 2>/dev/null || true
                   fi
                   rm -rf /tmp/aitum-plugin.deb /tmp/aitum_extract
-              else
-                  echo -e "\e[1;31m ERROR: Could not find Aitum .deb release URL!\e[0m"
-              fi
+              '
 
-              # Install Social Stream Ninja Desktop App
-              echo -e "\n\e[1;35m=====================================================================\e[0m"
-              echo -e "\e[1;35m Downloading and installing Social Stream Ninja Desktop...\e[0m"
-              echo -e "\e[1;35m=====================================================================\e[0m\n"
-
-              SSN_TAG=$$(curl -sI https://github.com/steveseguin/social_stream/releases/latest | grep -i '^location:' | sed 's/.*\///' | tr -d '\r' | tr -d '\n')
-              SSN_PATH=$$(curl -sL https://github.com/steveseguin/social_stream/releases/expanded_assets/$$SSN_TAG | grep -o 'href="[^"]*\.AppImage"' | head -n 1 | cut -d '"' -f 2)
-              SSN_URL="https://github.com$$SSN_PATH"
-
-              if [ -n "$$SSN_URL" ] && [ "$$SSN_URL" != "https://github.com" ]; then
+              run_step "Installing Social Stream Ninja Desktop" '
+                  SSN_TAG=$$(curl -sI https://github.com/steveseguin/social_stream/releases/latest | grep -i "^location:" | sed "s/.*\///" | tr -d "\r" | tr -d "\n")
+                  SSN_PATH=$$(curl -sL https://github.com/steveseguin/social_stream/releases/expanded_assets/$$SSN_TAG | grep -o "href=\"[^\"]*\.AppImage\"" | head -n 1 | cut -d "\"" -f 2)
+                  SSN_URL="https://github.com$$SSN_PATH"
                   mkdir -p /config/SSN_App
                   wget -q -O /config/SSN_App/ssn.AppImage "$$SSN_URL"
                   chmod +x /config/SSN_App/ssn.AppImage
-                  
-                  # Extract AppImage because FUSE is often restricted in Docker
                   cd /config/SSN_App
-                  ./ssn.AppImage --appimage-extract
-                  
-                  # Create Desktop Shortcut
+                  ./ssn.AppImage --appimage-extract >/dev/null 2>&1
                   mkdir -p /config/Desktop
                   echo "[Desktop Entry]" > /config/Desktop/social-stream-ninja.desktop
                   echo "Type=Application" >> /config/Desktop/social-stream-ninja.desktop
@@ -241,51 +203,14 @@ services:
                   echo "Terminal=false" >> /config/Desktop/social-stream-ninja.desktop
                   echo "Categories=Network;" >> /config/Desktop/social-stream-ninja.desktop
                   chmod +x /config/Desktop/social-stream-ninja.desktop
-                  
-                  # CRITICAL BLOCK: Electron apps write autostart files when they run.
-                  # We aggressively delete them and create dummy directories with these names.
-                  # This forces Electron's file writing to fail silently with EISDIR (is a directory).
                   mkdir -p /config/.config/autostart
                   for name in social-stream-ninja.desktop social-stream.desktop social_stream.desktop appimagekit-social-stream.desktop appimagekit-social-stream-ninja.desktop; do
                       rm -f "/config/.config/autostart/$$name"
                       mkdir -p "/config/.config/autostart/$$name"
                   done
-                  
-                  echo -e "\e[1;32m Social Stream Ninja Desktop installation complete!\e[0m"
-              else
-                  echo -e "\e[1;31m ERROR: Could not find Social Stream Ninja AppImage URL!\e[0m"
-              fi
-
-              # Install Streamer.bot by default (via Wine)
-              if [ ! -d "/config/.local/lib/streamer.bot" ]; then
-                  echo -e "\n\e[1;35m=====================================================================\e[0m"
-                  echo -e "\e[1;35m Installing Streamer.bot (via Wine)... this may take a few minutes.\e[0m"
-                  echo -e "\e[1;35m=====================================================================\e[0m\n"
-                  
-                  # Install required packages for Wine and Winetricks Quiet Mode
-                  sudo apt-get install -y -qq --no-install-recommends wine winetricks unzip cabextract >/dev/null 2>&1
-                  
-                  mkdir -p /tmp/sb-installer
-                  cd /tmp/sb-installer
-                  wget -q https://raw.githubusercontent.com/Streamerbot/sb-linux-installer/main/install.sh
-                  chmod +x install.sh
-                  
-                  # Run the installer
-                  ./install.sh
-                  
-                  # Copy desktop shortcut to actual Desktop folder
-                  cp /config/.local/share/applications/streamerbot.desktop /config/Desktop/ 2>/dev/null || true
-                  chmod +x /config/Desktop/streamerbot.desktop 2>/dev/null || true
-                  
-                  # Clean up
-                  cd /config
-                  rm -rf /tmp/sb-installer
-                  
-                  echo -e "\e[1;32m Streamer.bot installation complete!\e[0m"
-              fi
+              '
 
               # Generate and force PyleDefault Profile and Scene Collection
-              echo -e "\e[1;36m Generating PyleDefault optimized 1080p profile and scenes...\e[0m"
               cat << 'PYLE_DEFAULT' > /config/setup-pyle-defaults.py
               import os, json, configparser
               OBS_CONFIG_DIR = '/config/.config/obs-studio'
@@ -320,7 +245,7 @@ services:
               """
               with open(os.path.join(PROFILES_DIR, 'basic.ini'), 'w') as f:
                   f.write(basic_ini_content)
-              scene_json = {'current_program_scene': 'Live', 'current_scene': 'Live', 'current_transition': 'Fade', 'groups': [], 'modules': {}, 'name': 'PyleDefault', 'quick_transitions': [], 'saved_projectors': [], 'scene_order': [{'name': 'Live'}, {'name': 'Connection Failed'}], 'sources': [{'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'hotkeys': {}, 'id': 'scene', 'mixers': 0, 'monitoring_type': 0, 'muted': False, 'name': 'Live', 'prev_ver': 503316480, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'custom_size': False, 'id_counter': 3, 'items': [{'align': 5, 'bounds': {'x': 1920.0, 'y': 1080.0}, 'bounds_align': 0, 'bounds_type': 2, 'crop_bottom': 0, 'crop_left': 0, 'crop_right': 0, 'crop_top': 0, 'group_item_backup': False, 'id': 1, 'locked': False, 'name': 'SRTLA Camera', 'pos': {'x': 0.0, 'y': 0.0}, 'private_settings': {}, 'rot': 0.0, 'scale': {'x': 1.0, 'y': 1.0}, 'scale_filter': 'disable', 'visible': True}, {'align': 5, 'bounds': {'x': 1920.0, 'y': 100.0}, 'bounds_align': 0, 'bounds_type': 2, 'crop_bottom': 0, 'crop_left': 0, 'crop_right': 0, 'crop_top': 0, 'group_item_backup': False, 'id': 2, 'locked': False, 'name': 'Low Signal Strength', 'pos': {'x': 0.0, 'y': 950.0}, 'private_settings': {}, 'rot': 0.0, 'scale': {'x': 1.0, 'y': 1.0}, 'scale_filter': 'disable', 'visible': True}, {'align': 5, 'bounds': {'x': 0.0, 'y': 0.0}, 'bounds_align': 0, 'bounds_type': 0, 'crop_bottom': 0, 'crop_left': 0, 'crop_right': 0, 'crop_top': 0, 'group_item_backup': False, 'id': 3, 'locked': False, 'name': 'SRTLA Bitrate', 'pos': {'x': 20.0, 'y': 1000.0}, 'private_settings': {}, 'rot': 0.0, 'scale': {'x': 1.0, 'y': 1.0}, 'scale_filter': 'disable', 'visible': True}]}, 'sync': 0, 'versioned_id': 'scene', 'volume': 1.0}, {'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'hotkeys': {}, 'id': 'scene', 'mixers': 0, 'monitoring_type': 0, 'muted': False, 'name': 'Connection Failed', 'prev_ver': 503316480, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'custom_size': False, 'id_counter': 1, 'items': [{'align': 5, 'bounds': {'x': 1920.0, 'y': 1080.0}, 'bounds_align': 0, 'bounds_type': 2, 'crop_bottom': 0, 'crop_left': 0, 'crop_right': 0, 'crop_top': 0, 'group_item_backup': False, 'id': 1, 'locked': False, 'name': 'Connection Failed Text', 'pos': {'x': 0.0, 'y': 0.0}, 'private_settings': {}, 'rot': 0.0, 'scale': {'x': 1.0, 'y': 1.0}, 'scale_filter': 'disable', 'visible': True}]}, 'sync': 0, 'versioned_id': 'scene', 'volume': 1.0}, {'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'hotkeys': {}, 'id': 'srtla_source', 'mixers': 255, 'monitoring_type': 0, 'muted': False, 'name': 'SRTLA Camera', 'prev_ver': 503316480, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'listen_port': 5050}, 'sync': 0, 'versioned_id': 'srtla_source', 'volume': 1.0}, {'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'hotkeys': {}, 'id': 'text_ft2_source_v2', 'mixers': 255, 'monitoring_type': 0, 'muted': False, 'name': 'Low Signal Strength', 'prev_ver': 503316480, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'color1': 4278190335, 'text': 'Low Signal Strength', 'font': {'face': 'Arial', 'size': 128, 'style': 'Bold'}}, 'sync': 0, 'versioned_id': 'text_ft2_source_v2', 'volume': 1.0}, {'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'hotkeys': {}, 'id': 'text_ft2_source_v2', 'mixers': 255, 'monitoring_type': 0, 'muted': False, 'name': 'Connection Failed Text', 'prev_ver': 503316480, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'color1': 4278190335, 'text': 'Connection Failed', 'font': {'face': 'Arial', 'size': 256, 'style': 'Bold'}}, 'sync': 0, 'versioned_id': 'text_ft2_source_v2', 'volume': 1.0}, {'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'filters': [{'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'hotkeys': {}, 'id': 'srtla_stats_filter', 'mixers': 0, 'monitoring_type': 0, 'muted': False, 'name': 'SRTLA Bitrate Monitor', 'prev_ver': 503382019, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'listen_port': '5050'}, 'sync': 0, 'versioned_id': 'srtla_stats_filter', 'volume': 1.0}], 'hotkeys': {}, 'id': 'text_ft2_source_v2', 'mixers': 255, 'monitoring_type': 0, 'muted': False, 'name': 'SRTLA Bitrate', 'prev_ver': 503382019, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'color1': 4294967295, 'text': '0.0 KBPS', 'font': {'face': 'Arial', 'size': 48, 'style': 'Bold'}}, 'sync': 0, 'versioned_id': 'text_ft2_source_v2', 'volume': 1.0}]}
+              scene_json = {'current_program_scene': 'Live', 'current_scene': 'Live', 'current_transition': 'Fade', 'groups': [], 'modules': {}, 'name': 'PyleDefault', 'quick_transitions': [], 'saved_projectors': [], 'scene_order': [{'name': 'Live'}, {'name': 'Connection Failed'}], 'sources': [{'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'hotkeys': {}, 'id': 'scene', 'mixers': 0, 'monitoring_type': 0, 'muted': False, 'name': 'Live', 'prev_ver': 503316480, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'custom_size': False, 'id_counter': 3, 'items': [{'align': 5, 'bounds': {'x': 1920.0, 'y': 1080.0}, 'bounds_align': 0, 'bounds_type': 2, 'crop_bottom': 0, 'crop_left': 0, 'crop_right': 0, 'crop_top': 0, 'group_item_backup': False, 'id': 1, 'name': 'SRTLA Camera', 'pos': {'x': 0.0, 'y': 0.0}, 'private_settings': {}, 'rot': 0.0, 'scale': {'x': 1.0, 'y': 1.0}, 'scale_filter': 'disable', 'visible': True}, {'align': 5, 'bounds': {'x': 1920.0, 'y': 100.0}, 'bounds_align': 0, 'bounds_type': 2, 'crop_bottom': 0, 'crop_left': 0, 'crop_right': 0, 'crop_top': 0, 'group_item_backup': False, 'id': 2, 'name': 'Low Signal Strength', 'pos': {'x': 0.0, 'y': 950.0}, 'private_settings': {}, 'rot': 0.0, 'scale': {'x': 1.0, 'y': 1.0}, 'scale_filter': 'disable', 'visible': True}, {'align': 5, 'bounds': {'x': 0.0, 'y': 0.0}, 'bounds_align': 0, 'bounds_type': 0, 'crop_bottom': 0, 'crop_left': 0, 'crop_right': 0, 'crop_top': 0, 'group_item_backup': False, 'id': 3, 'name': 'SRTLA Bitrate', 'pos': {'x': 20.0, 'y': 1000.0}, 'private_settings': {}, 'rot': 0.0, 'scale': {'x': 1.0, 'y': 1.0}, 'scale_filter': 'disable', 'visible': True}]}, 'sync': 0, 'versioned_id': 'scene', 'volume': 1.0}, {'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'hotkeys': {}, 'id': 'scene', 'mixers': 0, 'monitoring_type': 0, 'muted': False, 'name': 'Connection Failed', 'prev_ver': 503316480, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'custom_size': False, 'id_counter': 1, 'items': [{'align': 5, 'bounds': {'x': 1920.0, 'y': 1080.0}, 'bounds_align': 0, 'bounds_type': 2, 'crop_bottom': 0, 'crop_left': 0, 'crop_right': 0, 'crop_top': 0, 'group_item_backup': False, 'id': 1, 'name': 'Connection Failed Text', 'pos': {'x': 0.0, 'y': 0.0}, 'private_settings': {}, 'rot': 0.0, 'scale': {'x': 1.0, 'y': 1.0}, 'scale_filter': 'disable', 'visible': True}]}, 'sync': 0, 'versioned_id': 'scene', 'volume': 1.0}, {'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'hotkeys': {}, 'id': 'srtla_source', 'mixers': 255, 'monitoring_type': 0, 'muted': False, 'name': 'SRTLA Camera', 'prev_ver': 503316480, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'listen_port': 5050}, 'sync': 0, 'versioned_id': 'srtla_source', 'volume': 1.0}, {'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'hotkeys': {}, 'id': 'text_ft2_source_v2', 'mixers': 255, 'monitoring_type': 0, 'muted': False, 'name': 'Low Signal Strength', 'prev_ver': 503316480, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'color1': 4278190335, 'text': 'Low Signal Strength', 'font': {'face': 'Arial', 'size': 128, 'style': 'Bold'}}, 'sync': 0, 'versioned_id': 'text_ft2_source_v2', 'volume': 1.0}, {'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'hotkeys': {}, 'id': 'text_ft2_source_v2', 'mixers': 255, 'monitoring_type': 0, 'muted': False, 'name': 'Connection Failed Text', 'prev_ver': 503316480, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'color1': 4278190335, 'text': 'Connection Failed', 'font': {'face': 'Arial', 'size': 256, 'style': 'Bold'}}, 'sync': 0, 'versioned_id': 'text_ft2_source_v2', 'volume': 1.0}, {'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'filters': [{'balance': 0.5, 'deinterlace_field_order': 0, 'deinterlace_mode': 0, 'enabled': True, 'flags': 0, 'hotkeys': {}, 'id': 'srtla_stats_filter', 'mixers': 0, 'monitoring_type': 0, 'muted': False, 'name': 'SRTLA Bitrate Monitor', 'prev_ver': 503382019, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'listen_port': '5050'}, 'sync': 0, 'versioned_id': 'srtla_stats_filter', 'volume': 1.0}], 'hotkeys': {}, 'id': 'text_ft2_source_v2', 'mixers': 255, 'monitoring_type': 0, 'muted': False, 'name': 'SRTLA Bitrate', 'prev_ver': 503382019, 'private_settings': {}, 'push-to-mute': False, 'push-to-mute-delay': 0, 'push-to-talk': False, 'push-to-talk-delay': 0, 'settings': {'color1': 4294967295, 'text': '0.0 KBPS', 'font': {'face': 'Arial', 'size': 48, 'style': 'Bold'}}, 'sync': 0, 'versioned_id': 'text_ft2_source_v2', 'volume': 1.0}]}
               with open(os.path.join(SCENES_DIR, 'PyleDefault.json'), 'w') as f:
                   json.dump(scene_json, f)
               global_ini_path = os.path.join(OBS_CONFIG_DIR, 'global.ini')
@@ -360,9 +285,12 @@ services:
               if os.path.exists(untitled_scene):
                   os.remove(untitled_scene)
               PYLE_DEFAULT
-              sed -i 's/^        //' /config/setup-pyle-defaults.py
-              python3 /config/setup-pyle-defaults.py
-              chown -R abc:abc /config/.config/obs-studio/
+
+              run_step "Generating PyleDefault Profile and Scene Collection" '
+                  sed -i "s/^              //" /config/setup-pyle-defaults.py
+                  python3 /config/setup-pyle-defaults.py
+                  chown -R abc:abc /config/.config/obs-studio/
+              '
 
               # Force the desktop resolution to 1080p so OBS natively defaults to a 1080p canvas
               xrandr -s 1920x1080 >/dev/null 2>&1 || true
@@ -380,7 +308,11 @@ services:
               chmod +x /config/Desktop/obs-studio.desktop
 
               # Launch OBS Studio untethered from this script
-              echo -e "\e[1;36m Writing OBS logs to /config/obs-startup.log \e[0m"
+              echo -e "\n\e[1;32m=====================================================================\e[0m"
+              echo -e "\e[1;32m INSTALLATION COMPLETE! Launching OBS Studio...\e[0m"
+              echo -e "\e[1;32m=====================================================================\e[0m"
+              sleep 3
+              
               nohup obs > /config/obs-startup.log 2>&1 &
               EOF
               chmod +x /usr/local/bin/install-obs.sh
@@ -406,7 +338,6 @@ services:
               Terminal=false
               EOF
               chmod +x /config/Desktop/rebuild-plugin.desktop
-
               # CRITICAL FIX: The previous script ran 'chown abc:abc' before 'abc' existed, 
               # leaving /config owned by root and completely crashing XFCE! 
               # Using numerical ID 1000 guarantees perfect permissions.
