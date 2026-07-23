@@ -247,7 +247,7 @@ static void srtla_source_update(void *data, obs_data_t *settings)
 				obs_data_release(media_settings);
 
 				if (context->media_source) {
-					obs_source_set_audio_mixers(context->media_source, 0xFF);
+					obs_source_set_audio_mixers(context->media_source, 0);
 					obs_source_add_audio_capture_callback(context->media_source, srtla_audio_capture_cb, context);
 					if (obs_source_active(context->source)) obs_source_inc_active(context->media_source);
 					if (obs_source_showing(context->source)) obs_source_inc_showing(context->media_source);
@@ -336,7 +336,7 @@ static void srtla_source_get_defaults(obs_data_t *settings)
 struct obs_source_info srtla_source_info = {
 	.id = "srtla_source",
 	.type = OBS_SOURCE_TYPE_INPUT,
-	.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_AUDIO | OBS_SOURCE_ASYNC | OBS_SOURCE_CUSTOM_DRAW,
+	.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_AUDIO | OBS_SOURCE_CUSTOM_DRAW,
 	.get_name = srtla_source_get_name,
 	.create = srtla_source_create,
 	.destroy = srtla_source_destroy,
