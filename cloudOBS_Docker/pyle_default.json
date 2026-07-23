@@ -1,27 +1,164 @@
 {
-  "current_program_scene": "Intro",
-  "current_scene": "Intro",
+  "current_program_scene": "Live",
+  "current_scene": "Live",
   "current_transition": "Fade",
   "groups": [],
   "modules": {},
-  "name": "Default SRTLA",
-  "preview_locked": false,
+  "name": "PyleDefault",
   "quick_transitions": [],
   "saved_projectors": [],
-  "scaling_offsets_x": {},
-  "scaling_offsets_y": {},
   "scene_order": [
-    {
-      "name": "Intro"
-    },
     {
       "name": "Live"
     },
     {
-      "name": "Disconnect"
+      "name": "Connection Failed"
     }
   ],
   "sources": [
+    {
+      "balance": 0.5,
+      "deinterlace_field_order": 0,
+      "deinterlace_mode": 0,
+      "enabled": true,
+      "flags": 0,
+      "hotkeys": {},
+      "id": "scene",
+      "mixers": 0,
+      "monitoring_type": 0,
+      "muted": false,
+      "name": "Live",
+      "prev_ver": 503316480,
+      "private_settings": {},
+      "push-to-mute": false,
+      "push-to-mute-delay": 0,
+      "push-to-talk": false,
+      "push-to-talk-delay": 0,
+      "settings": {
+        "custom_size": false,
+        "id_counter": 2,
+        "items": [
+          {
+            "align": 5,
+            "bounds": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "bounds_align": 0,
+            "bounds_type": 2,
+            "crop_bottom": 0,
+            "crop_left": 0,
+            "crop_right": 0,
+            "crop_top": 0,
+            "group_item_backup": false,
+            "id": 1,
+            "locked": false,
+            "name": "SRTLA Camera",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "private_settings": {},
+            "rot": 0.0,
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "scale_filter": "disable",
+            "visible": true
+          },
+          {
+            "align": 5,
+            "bounds": {
+              "x": 1920.0,
+              "y": 100.0
+            },
+            "bounds_align": 0,
+            "bounds_type": 2,
+            "crop_bottom": 0,
+            "crop_left": 0,
+            "crop_right": 0,
+            "crop_top": 0,
+            "group_item_backup": false,
+            "id": 2,
+            "locked": false,
+            "name": "Low Signal Strength",
+            "pos": {
+              "x": 0.0,
+              "y": 950.0
+            },
+            "private_settings": {},
+            "rot": 0.0,
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "scale_filter": "disable",
+            "visible": true
+          }
+        ]
+      },
+      "sync": 0,
+      "versioned_id": "scene",
+      "volume": 1.0
+    },
+    {
+      "balance": 0.5,
+      "deinterlace_field_order": 0,
+      "deinterlace_mode": 0,
+      "enabled": true,
+      "flags": 0,
+      "hotkeys": {},
+      "id": "scene",
+      "mixers": 0,
+      "monitoring_type": 0,
+      "muted": false,
+      "name": "Connection Failed",
+      "prev_ver": 503316480,
+      "private_settings": {},
+      "push-to-mute": false,
+      "push-to-mute-delay": 0,
+      "push-to-talk": false,
+      "push-to-talk-delay": 0,
+      "settings": {
+        "custom_size": false,
+        "id_counter": 1,
+        "items": [
+          {
+            "align": 5,
+            "bounds": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "bounds_align": 0,
+            "bounds_type": 2,
+            "crop_bottom": 0,
+            "crop_left": 0,
+            "crop_right": 0,
+            "crop_top": 0,
+            "group_item_backup": false,
+            "id": 1,
+            "locked": false,
+            "name": "Connection Failed Text",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "private_settings": {},
+            "rot": 0.0,
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "scale_filter": "disable",
+            "visible": true
+          }
+        ]
+      },
+      "sync": 0,
+      "versioned_id": "scene",
+      "volume": 1.0
+    },
     {
       "balance": 0.5,
       "deinterlace_field_order": 0,
@@ -33,8 +170,8 @@
       "mixers": 255,
       "monitoring_type": 0,
       "muted": false,
-      "name": "SRTLA Stream",
-      "prev_ver": 503382019,
+      "name": "SRTLA Camera",
+      "prev_ver": 503316480,
       "private_settings": {},
       "push-to-mute": false,
       "push-to-mute-delay": 0,
@@ -54,217 +191,54 @@
       "enabled": true,
       "flags": 0,
       "hotkeys": {},
-      "id": "scene",
-      "mixers": 0,
+      "id": "text_ft2_source_v2",
+      "mixers": 255,
       "monitoring_type": 0,
       "muted": false,
-      "name": "Intro",
-      "prev_ver": 503382019,
+      "name": "Low Signal Strength",
+      "prev_ver": 503316480,
       "private_settings": {},
       "push-to-mute": false,
       "push-to-mute-delay": 0,
       "push-to-talk": false,
       "push-to-talk-delay": 0,
       "settings": {
-        "id_counter": 0,
-        "items": []
-      },
-      "sync": 0,
-      "versioned_id": "scene",
-      "volume": 1.0
-    },
-    {
-      "balance": 0.5,
-      "deinterlace_field_order": 0,
-      "deinterlace_mode": 0,
-      "enabled": true,
-      "flags": 0,
-      "hotkeys": {},
-      "id": "scene",
-      "mixers": 0,
-      "monitoring_type": 0,
-      "muted": false,
-      "name": "Live",
-      "prev_ver": 503382019,
-      "private_settings": {},
-      "push-to-mute": false,
-      "push-to-mute-delay": 0,
-      "push-to-talk": false,
-      "push-to-talk-delay": 0,
-      "settings": {
-        "id_counter": 2,
-        "items": [
-          {
-            "align": 5,
-            "bounds": {
-              "x": 0.0,
-              "y": 0.0
-            },
-            "bounds_align": 0,
-            "bounds_type": 0,
-            "crop_bottom": 0,
-            "crop_left": 0,
-            "crop_right": 0,
-            "crop_top": 0,
-            "group_item_backup": false,
-            "id": 1,
-            "locked": false,
-            "name": "SRTLA Stream",
-            "pos": {
-              "x": 0.0,
-              "y": 0.0
-            },
-            "private_settings": {},
-            "rot": 0.0,
-            "scale": {
-              "x": 1.0,
-              "y": 1.0
-            },
-            "scale_filter": "disable",
-            "visible": true
-          },
-          {
-            "align": 5,
-            "bounds": {
-              "x": 0.0,
-              "y": 0.0
-            },
-            "bounds_align": 0,
-            "bounds_type": 0,
-            "crop_bottom": 0,
-            "crop_left": 0,
-            "crop_right": 0,
-            "crop_top": 0,
-            "group_item_backup": false,
-            "id": 2,
-            "locked": false,
-            "name": "SRTLA Bitrate",
-            "pos": {
-              "x": 20.0,
-              "y": 1000.0
-            },
-            "private_settings": {},
-            "rot": 0.0,
-            "scale": {
-              "x": 1.0,
-              "y": 1.0
-            },
-            "scale_filter": "disable",
-            "visible": true
-          }
-        ]
-      },
-      "sync": 0,
-      "versioned_id": "scene",
-      "volume": 1.0
-    },
-    {
-      "balance": 0.5,
-      "deinterlace_field_order": 0,
-      "deinterlace_mode": 0,
-      "enabled": true,
-      "flags": 0,
-      "hotkeys": {},
-      "id": "scene",
-      "mixers": 0,
-      "monitoring_type": 0,
-      "muted": false,
-      "name": "Disconnect",
-      "prev_ver": 503382019,
-      "private_settings": {},
-      "push-to-mute": false,
-      "push-to-mute-delay": 0,
-      "push-to-talk": false,
-      "push-to-talk-delay": 0,
-      "settings": {
-        "id_counter": 1,
-        "items": [
-          {
-            "align": 5,
-            "bounds": {
-              "x": 0.0,
-              "y": 0.0
-            },
-            "bounds_align": 0,
-            "bounds_type": 0,
-            "crop_bottom": 0,
-            "crop_left": 0,
-            "crop_right": 0,
-            "crop_top": 0,
-            "group_item_backup": false,
-            "id": 1,
-            "locked": false,
-            "name": "SRTLA Stream",
-            "pos": {
-              "x": 0.0,
-              "y": 0.0
-            },
-            "private_settings": {},
-            "rot": 0.0,
-            "scale": {
-              "x": 1.0,
-              "y": 1.0
-            },
-            "scale_filter": "disable",
-            "visible": true
-          }
-        ]
-      },
-      "sync": 0,
-      "versioned_id": "scene",
-      "volume": 1.0
-    },
-    {
-      "balance": 0.5,
-      "deinterlace_field_order": 0,
-      "deinterlace_mode": 0,
-      "enabled": true,
-      "flags": 0,
-      "filters": [
-        {
-          "balance": 0.5,
-          "deinterlace_field_order": 0,
-          "deinterlace_mode": 0,
-          "enabled": true,
-          "flags": 0,
-          "hotkeys": {},
-          "id": "srtla_stats_filter",
-          "mixers": 0,
-          "monitoring_type": 0,
-          "muted": false,
-          "name": "SRTLA Bitrate Monitor",
-          "prev_ver": 503382019,
-          "private_settings": {},
-          "push-to-mute": false,
-          "push-to-mute-delay": 0,
-          "push-to-talk": false,
-          "push-to-talk-delay": 0,
-          "settings": {
-            "listen_port": "5050"
-          },
-          "sync": 0,
-          "versioned_id": "srtla_stats_filter",
-          "volume": 1.0
+        "color1": 4278190335,
+        "text": "Low Signal Strength",
+        "font": {
+          "face": "Arial",
+          "size": 128,
+          "style": "Bold"
         }
-      ],
+      },
+      "sync": 0,
+      "versioned_id": "text_ft2_source_v2",
+      "volume": 1.0
+    },
+    {
+      "balance": 0.5,
+      "deinterlace_field_order": 0,
+      "deinterlace_mode": 0,
+      "enabled": true,
+      "flags": 0,
       "hotkeys": {},
       "id": "text_ft2_source_v2",
       "mixers": 255,
       "monitoring_type": 0,
       "muted": false,
-      "name": "SRTLA Bitrate",
-      "prev_ver": 503382019,
+      "name": "Connection Failed Text",
+      "prev_ver": 503316480,
       "private_settings": {},
       "push-to-mute": false,
       "push-to-mute-delay": 0,
       "push-to-talk": false,
       "push-to-talk-delay": 0,
       "settings": {
-        "color1": 4294967295,
-        "text": "0.0 KBPS",
+        "color1": 4278190335,
+        "text": "Connection Failed",
         "font": {
           "face": "Arial",
-          "size": 48,
+          "size": 256,
           "style": "Bold"
         }
       },
@@ -272,7 +246,5 @@
       "versioned_id": "text_ft2_source_v2",
       "volume": 1.0
     }
-  ],
-  "transition_duration": 300,
-  "transitions": []
+  ]
 }
