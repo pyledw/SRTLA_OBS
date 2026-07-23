@@ -242,8 +242,14 @@ services:
                   echo "Categories=Network;" >> /config/Desktop/social-stream-ninja.desktop
                   chmod +x /config/Desktop/social-stream-ninja.desktop
                   
-                  # Ensure it is removed from autostart if it was previously copied
-                  rm -f /config/.config/autostart/social-stream-ninja.desktop
+                  # CRITICAL BLOCK: Electron apps write autostart files when they run.
+                  # We aggressively delete them and create dummy directories with these names.
+                  # This forces Electron's file writing to fail silently with EISDIR (is a directory).
+                  mkdir -p /config/.config/autostart
+                  for name in social-stream-ninja.desktop social-stream.desktop social_stream.desktop appimagekit-social-stream.desktop appimagekit-social-stream-ninja.desktop; do
+                      rm -f "/config/.config/autostart/$$name"
+                      mkdir -p "/config/.config/autostart/$$name"
+                  done
                   
                   echo -e "\e[1;32m Social Stream Ninja Desktop installation complete!\e[0m"
               else
