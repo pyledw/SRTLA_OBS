@@ -29,7 +29,7 @@ function(_check_dependencies_macos)
   )
 
   list(APPEND CMAKE_FRAMEWORK_PATH "${dependencies_dir}/Frameworks")
-  set(CMAKE_FRAMEWORK_PATH ${CMAKE_FRAMEWORK_PATH} PARENT_SCOPE)
+  return(PROPAGATE CMAKE_PREFIX_PATH CMAKE_FRAMEWORK_PATH)
 endfunction()
 
 _check_dependencies_macos()

@@ -19,6 +19,7 @@ function(_check_dependencies_windows)
   set(dependencies_list prebuilt qt6 obs-studio)
 
   _check_dependencies()
+  return(PROPAGATE CMAKE_PREFIX_PATH)
 endfunction()
 
 _check_dependencies_windows()
