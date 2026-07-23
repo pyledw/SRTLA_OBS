@@ -475,6 +475,13 @@
                     <option value="RTMP">RTMP</option>
                     <option value="SRT">SRT</option>
                 </select>
+                <div style="display:flex; align-items:center; gap:10px; padding: 5px 0;">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="target-vertical">
+                        <span class="slider"></span>
+                    </label>
+                    <span>Vertical Stream</span>
+                </div>
                 <input type="text" id="target-url" placeholder="rtmp://... or srt://...">
                 <input type="password" id="target-key" placeholder="Stream Key">
             </div>
@@ -1258,6 +1265,7 @@
                 document.getElementById('target-id').value = target.id;
                 document.getElementById('target-name').value = target.name;
                 document.getElementById('target-type').value = target.type || "RTMP";
+                document.getElementById('target-vertical').checked = target.is_vertical || false;
                 document.getElementById('target-url').value = target.url;
                 document.getElementById('target-key').value = target.key;
             } else {
@@ -1265,6 +1273,7 @@
                 document.getElementById('target-id').value = "";
                 document.getElementById('target-name').value = "";
                 document.getElementById('target-type').value = "RTMP";
+                document.getElementById('target-vertical').checked = false;
                 document.getElementById('target-url').value = "";
                 document.getElementById('target-key').value = "";
             }
@@ -1283,6 +1292,7 @@
                 type: document.getElementById('target-type').value,
                 url: document.getElementById('target-url').value,
                 key: document.getElementById('target-key').value,
+                is_vertical: document.getElementById('target-vertical').checked,
                 enabled: true
             };
             

@@ -181,6 +181,7 @@ private slots:
 
 private:
 	QCheckBox *syncWithObsCheck;
+	QCheckBox *enableVerticalCheck;
 	class QTableWidget *targetsTable;
 };
 
